@@ -25,10 +25,33 @@
     </div>
     <div class="header-actions">
       <span class="status-badge" id="bufferStatus"><span class="pulse-dot"></span> Buffer: Active (30s)</span>
+      <span class="status-badge twitch-status-badge" id="twitchConnBadge"><span class="status-dot offline" id="twitchStatusDot"></span> Twitch Chat: Sim Mode</span>
       <button class="btn btn-secondary" id="openChatSimBtn">💬 Chat Simulator</button>
-      <a href="https://twitch.tv" target="_blank" class="btn btn-twitch">Connect Twitch</a>
+      <button class="btn btn-twitch" id="toggleTwitchConnectBtn">🟣 Connect Live Twitch Chat</button>
     </div>
   </header>
+
+  <!-- Live Twitch Channel Connection Bar -->
+  <section class="twitch-connect-bar" id="twitchConnectBar">
+    <div class="twitch-bar-left">
+      <span class="twitch-bar-label">🟣 Live Twitch IRC WebSocket Listener:</span>
+      <div class="twitch-channel-input-group">
+        <span class="channel-prefix">twitch.tv/</span>
+        <input type="text" id="liveChannelInput" value="riotgames" placeholder="channel_name (e.g. shroud, riotgames)">
+        <button class="btn btn-sm btn-primary" id="connectChannelBtn">Connect Channel</button>
+        <button class="btn btn-sm btn-outline" id="disconnectChannelBtn" style="display:none;">Disconnect</button>
+      </div>
+      <div class="trigger-keyword-group">
+        <label for="triggerKeywordInput">Trigger Cmd:</label>
+        <input type="text" id="triggerKeywordInput" value="!clip" title="Chat command that triggers an automatic 9:16 clip">
+      </div>
+    </div>
+    <div class="twitch-bar-right">
+      <div class="live-chat-ticker" id="liveChatTicker">
+        <span class="ticker-placeholder">Enter any live Twitch channel above to listen for real-time <code>!clip</code> triggers in chat...</span>
+      </div>
+    </div>
+  </section>
 
   <!-- Main Container -->
   <main class="main-layout">
@@ -67,20 +90,36 @@
           </button>
         </div>
       </div>
+
+      <!-- Live Twitch Chat Stream Feed Card -->
+      <div class="live-chat-panel-card">
+        <div class="live-chat-card-header">
+          <div class="live-chat-title-group">
+            <h3>💬 Live Twitch Chat Trigger Feed</h3>
+            <span class="chat-channel-pill" id="activeChannelPill">#sim-chat</span>
+          </div>
+          <button class="btn btn-xs btn-outline" id="quickSimClipBtn" title="Simulate a viewer typing !clip right now">⚡ Test !clip</button>
+        </div>
+        <div class="live-chat-log" id="mainChatLog">
+          <div class="chat-msg"><span class="chatter-name" style="color:#10b981;">xX_Sniper_Xx:</span> PogChamp THAT CROSSHAIR PLACEMENT!</div>
+          <div class="chat-msg"><span class="chatter-name" style="color:#a855f7;">Nightbot:</span> Type <code>!clip</code> in chat to capture the last 30s in 9:16 vertical format!</div>
+          <div class="chat-msg"><span class="chatter-name" style="color:#3b82f6;">TwitchFan99:</span> SOMEONE CLIP THAT RIGHT NOW 🔥</div>
+        </div>
+      </div>
     </section>
 
     <!-- Right Column: 9:16 Vertical Export & Codex AI -->
     <section class="panel export-panel">
       <div class="panel-header">
         <h2>📱 9:16 Vertical Preview (TikTok / Shorts)</h2>
-        <span class="badge-pill">Zero Cloud GPU</span>
+        <span class="badge-pill" id="recorderFormatBadge">9:16 Canvas Recorder</span>
       </div>
 
       <!-- Vertical Phone Frame -->
       <div class="phone-mockup-wrapper">
         <div class="phone-frame">
           <canvas id="verticalExportCanvas" width="720" height="1280"></canvas>
-          <div class="phone-watermark-overlay" id="watermarkPreviewOverlay">
+          <div class="phone-watermark-overlay" id="watermarkPreviewOverlay" style="display:none;">
             <div class="watermark-streamer" id="streamerBadgePreview">
               <span class="wm-twitch-icon">🟣</span>
               <span id="previewStreamerTag">@MilmannLive</span>
