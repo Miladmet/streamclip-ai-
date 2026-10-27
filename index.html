@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamClip AI — Twitch Live Clip to 9:16 Viral Shorts</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header Navigation -->
+  <header class="header">
+    <div class="logo-group">
+      <div class="twitch-badge">
+        <svg class="twitch-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>StreamClip <span class="highlight">AI</span></h1>
+        <p class="subtitle">Live Twitch Buffer &rarr; 9:16 Viral Shorts in 1-Click (Powered by OpenAI Codex)</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="status-badge" id="bufferStatus"><span class="pulse-dot"></span> Buffer: Active (30s)</span>
+      <button class="btn btn-secondary" id="openChatSimBtn">💬 Chat Simulator</button>
+      <a href="https://twitch.tv" target="_blank" class="btn btn-twitch">Connect Twitch</a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-layout">
+    <!-- Left Column: Video Player & Live Buffer -->
+    <section class="panel video-panel">
+      <div class="panel-header">
+        <h2>🎥 Live Stream Monitor</h2>
+        <div class="controls-row">
+          <button class="btn btn-sm btn-outline" id="loadDemoStreamBtn">▶️ Load Demo Gaming Stream</button>
+          <button class="btn btn-sm btn-outline" id="captureScreenBtn">🖥️ Capture My Screen / Tab</button>
+        </div>
+      </div>
+
+      <div class="video-container">
+        <video id="liveVideo" autoplay loop muted playsinline crossorigin="anonymous"></video>
+        <canvas id="bufferCanvas" style="display:none;"></canvas>
+        <div class="video-overlay-hud">
+          <span class="live-tag">LIVE</span>
+          <span class="viewer-tag">👥 4,218 viewers</span>
+          <span class="fps-tag">60 FPS 1080p</span>
+        </div>
+      </div>
+
+      <!-- Buffer Timeline -->
+      <div class="buffer-timeline-card">
+        <div class="buffer-info">
+          <span>Circular Memory Buffer: <strong>Last 30 Seconds</strong></span>
+          <span id="bufferTimer">30.0s available</span>
+        </div>
+        <div class="buffer-progress-bar">
+          <div class="buffer-progress-fill" id="bufferFill" style="width: 100%;"></div>
+        </div>
+        <div class="trigger-actions">
+          <button class="btn btn-primary btn-lg" id="clipNowBtn">
+            ⚡ Clip Last 30 Seconds (!clip)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: 9:16 Vertical Export & Codex AI -->
+    <section class="panel export-panel">
+      <div class="panel-header">
+        <h2>📱 9:16 Vertical Preview (TikTok / Shorts)</h2>
+        <span class="badge-pill">Zero Cloud GPU</span>
+      </div>
+
+      <!-- Vertical Phone Frame -->
+      <div class="phone-mockup-wrapper">
+        <div class="phone-frame">
+          <canvas id="verticalExportCanvas" width="720" height="1280"></canvas>
+          <div class="phone-watermark-overlay" id="watermarkPreviewOverlay">
+            <div class="watermark-streamer" id="streamerBadgePreview">
+              <span class="wm-twitch-icon">🟣</span>
+              <span id="previewStreamerTag">@MilmannLive</span>
+            </div>
+            <div class="watermark-clipper" id="clipperBadgePreview">
+              Clipped by <span id="previewClipperTag">@TwitchFan99</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings & Customization -->
+      <div class="settings-card">
+        <h3>🎨 Branding & Watermark Settings</h3>
+        <div class="input-grid">
+          <div class="input-field">
+            <label for="streamerHandleInput">Streamer Handle</label>
+            <input type="text" id="streamerHandleInput" value="@MilmannLive" placeholder="@YourTwitchName">
+          </div>
+          <div class="input-field">
+            <label for="clipperHandleInput">Viewer Attribution (Clipped By)</label>
+            <input type="text" id="clipperHandleInput" value="@EpicGamer42" placeholder="@ViewerName">
+          </div>
+          <div class="input-field">
+            <label for="cropFocusSelect">Smart Crop Alignment</label>
+            <select id="cropFocusSelect">
+              <option value="center" selected>Center Action (Crosshair / Gameplay)</option>
+              <option value="split">Split Cam + Gameplay</option>
+              <option value="blur_bg">Pillarbox Blur Background</option>
+            </select>
+          </div>
+          <div class="input-field">
+            <label for="clipDurationSelect">Clip Window</label>
+            <select id="clipDurationSelect">
+              <option value="15">Last 15 Seconds (Fast Action)</option>
+              <option value="30" selected>Last 30 Seconds (Full Play)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Codex Viral Title Generator -->
+        <div class="codex-ai-card">
+          <div class="codex-header">
+            <h4>🤖 OpenAI Codex Title & Hashtag Generator</h4>
+            <button class="btn btn-xs btn-codex" id="generateCodexTitlesBtn">⚡ Generate Viral Hooks</button>
+          </div>
+          <div class="codex-results" id="codexResultsBox">
+            <div class="codex-hook-item">
+              <strong>Hook 1:</strong> "THEY DID NOT EXPECT THIS PLAY 😱 #gaming #twitch #twitchclips"
+            </div>
+          </div>
+        </div>
+
+        <!-- Download & Export Button -->
+        <div class="export-actions">
+          <button class="btn btn-success btn-lg" id="exportVideoBtn" disabled>
+            💾 Render & Download 9:16 Video (MP4)
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Twitch Chat Simulator Modal -->
+  <div class="modal-backdrop" id="chatModal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>💬 Twitch Chat Event Simulator</h3>
+        <button class="close-btn" id="closeChatModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Simulate a real Twitch viewer typing <code>!clip</code> in your stream chat:</p>
+        <div class="chat-feed" id="chatFeed">
+          <div class="chat-msg"><span class="chatter-name" style="color:#10b981;">xX_Sniper_Xx:</span> PogChamp THAT SHOT!</div>
+          <div class="chat-msg"><span class="chatter-name" style="color:#3b82f6;">TwitchFan99:</span> CLIP THAT RIGHT NOW</div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="simChatInput" value="!clip" placeholder="Type !clip or any message">
+          <button class="btn btn-primary" id="sendSimChatBtn">Send to Stream</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>StreamClip AI &bull; Built with OpenAI Codex for the Codex x TwitchCon 2026 Hackathon &bull; 100% Client-Side Canvas Engine &bull; Zero Server Bandwidth Fees</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
