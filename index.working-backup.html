@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StreamClip AI — Milestone 1</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: #101014; color: #f5f5f7; }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { margin: 0 0 8px; } p { color: #b8b8c2; line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr); gap: 20px; }
+    .panel { background: #1a1a22; border: 1px solid #30303b; border-radius: 14px; padding: 16px; }
+    video { width: 100%; background: #050507; border-radius: 10px; max-height: 520px; }
+    canvas { width: min(100%, 360px); aspect-ratio: 9 / 16; background: #050507; border: 1px solid #444; border-radius: 10px; }
+    button, select, input { border: 1px solid #494957; background: #262632; color: white; padding: 10px 12px; border-radius: 8px; font: inherit; }
+    button { cursor: pointer; } button.primary { background: #9147ff; border-color: #9147ff; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .status { padding: 10px; border-radius: 8px; background: #252530; color: #d7d7df; white-space: pre-wrap; }
+    .small { font-size: 13px; color: #9999a8; }
+    label { display: block; margin: 10px 0 6px; color: #c9c9d2; font-size: 13px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>StreamClip AI</h1>
+  <p>Milestone 1: rolling pre-trigger capture, timestamp-accurate 30-second clips, and WebM export.</p>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Source video</h2>
+      <video id="source" autoplay muted playsinline></video>
+      <div class="controls">
+        <button id="capture" class="primary">Capture screen / Twitch tab</button>
+        <button id="stop" disabled>Stop capture</button>
+      </div>
+      <p class="small">Choose a browser tab containing the stream and enable tab audio in the browser's sharing dialog. This demo does not bypass Twitch player restrictions.</p>
+      <h2>Vertical preview</h2>
+      <canvas id="output" width="720" height="1280"></canvas>
+      <div class="controls">
+        <select id="layout">
+          <option value="center">Center crop</option>
+          <option value="blur">Blur background</option>
+          <option value="split">Facecam + gameplay (placeholder facecam)</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Clip controls</h2>
+      <label for="channel">Twitch channel (IRC listener)</label>
+      <input id="channel" value="riotgames" placeholder="e.g. shroud, riotgames, kaicenat" />
+      <label for="clipper">Clip attribution</label>
+      <input id="clipper" value="@viewer" />
+      <div class="controls">
+        <button id="start" class="primary" disabled>Start rolling buffer</button>
+        <button id="clip" disabled>Clip last 30 seconds</button>
+      </div>
+      <div class="controls">
+        <button id="connect" class="primary">🟣 Connect anonymous chat</button>
+        <button id="disconnect" disabled>Disconnect chat</button>
+      </div>
+      <div class="status" id="chatStatus" style="margin-bottom: 8px; border-left: 3px solid #9147ff; font-size: 13px;">💬 Twitch Chat: Ready — Click "Connect anonymous chat" to listen for !clip</div>
+      <div class="status" id="status">Select a screen or browser tab to begin.</div>
+      <p class="small">The first complete 30-second history becomes available after the buffer has warmed up. A manual clip button is included so you can test without Twitch chat.</p>
+      <h2>Latest export</h2>
+      <a id="download" hidden>Download WebM clip</a>
+      <video id="result" controls playsinline hidden></video>
+      <pre id="metadata" class="small"></pre>
+    </section>
+  </div>
+</main>
+<script>
+(() => {
+  const DEFAULTS = {
+    clipDurationMs: 30000,
+    segmentDurationMs: 32000,
+    staggerMs: 15000,
+    maxAgeMs: 65000,
+    videoBitsPerSecond: 3500000,
+    audioBitsPerSecond: 128000
+  };
+
+  function nowMs() {
+    return performance.now();
+  }
+
+  function chooseMimeType(hasAudio) {
+    const candidates = hasAudio
+      ? ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"]
+      : ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"];
+    return candidates.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  class CanvasPipeline {
+    constructor({ video, canvas, layout = "center", streamer = "@streamer", clipper = "@viewer", fps = 30 }) {
+      this.video = video;
+      this.canvas = canvas;
+      this.ctx = canvas.getContext("2d", { alpha: false });
+      this.layout = layout;
+      this.streamer = streamer;
+      this.clipper = clipper;
+      this.fps = fps;
+      this.raf = null;
+      this.running = false;
+      canvas.width = 720;
+      canvas.height = 1280;
+    }
+
+    setLayout(layout) {
+      if (!["center", "blur", "split"].includes(layout)) return;
+      this.layout = layout;
+    }
+
+    renderFrame() {
+      const v = this.video;
+      if (!v || v.readyState < 2 || !v.videoWidth || !v.videoHeight) return;
+      const c = this.ctx, W = 720, H = 1280;
+
+      if (this.layout === "center") {
+        const ratio = 9 / 16;
+        const cropW = Math.min(v.videoWidth, v.videoHeight * ratio);
+        const cropH = cropW / ratio;
+        c.drawImage(v, (v.videoWidth - cropW) / 2, (v.videoHeight - cropH) / 2, cropW, cropH, 0, 0, W, H);
+      } else if (this.layout === "blur") {
+        c.save();
+        c.filter = "blur(32px) brightness(.42)";
+        c.drawImage(v, -70, -70, W + 140, H + 140);
+        c.restore();
+        const scale = Math.min(W / v.videoWidth, H / v.videoHeight);
+        const w = v.videoWidth * scale, h = v.videoHeight * scale;
+        c.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
+      } else {
+        const top = 390;
+        c.fillStyle = "#111"; c.fillRect(0, 0, W, top);
+        c.fillStyle = "#eee"; c.font = "bold 28px sans-serif";
+        c.fillText("FACECAM AREA", 235, 205);
+        const cropW = Math.min(v.videoWidth, v.videoHeight * (W / (H - top)));
+        c.drawImage(v, (v.videoWidth - cropW) / 2, 0, cropW, v.videoHeight, 0, top, W, H - top);
+      }
+
+      c.save();
+      c.font = "bold 24px sans-serif";
+      c.fillStyle = "#fff";
+      c.shadowColor = "#000";
+      c.shadowBlur = 5;
+      c.fillText(this.streamer, 24, 42);
+      c.font = "20px sans-serif";
+      c.fillText(`Clipped by ${this.clipper}`, 24, H - 28);
+      c.restore();
+    }
+
+    start() {
+      if (this.running) return;
+      this.running = true;
+      const tick = () => {
+        if (!this.running) return;
+        this.renderFrame();
+        this.raf = requestAnimationFrame(tick);
+      };
+      tick();
+    }
+
+    stop() {
+      this.running = false;
+      if (this.raf != null) cancelAnimationFrame(this.raf);
+    }
+
+    createStream(audioSourceStream) {
+      const videoStream = this.canvas.captureStream(this.fps);
+      const tracks = [
+        ...videoStream.getVideoTracks(),
+        ...(audioSourceStream?.getAudioTracks() || [])
+      ];
+      return new MediaStream(tracks);
+    }
+  }
+
+  class RollingClipBuffer extends EventTarget {
+    constructor(stream, options = {}) {
+      super();
+      this.stream = stream;
+      this.options = { ...DEFAULTS, ...options };
+      this.mimeType = chooseMimeType(stream.getAudioTracks().length > 0);
+      this.segments = [];
+      this.slots = [];
+      this.running = false;
+      this.startedAt = null;
+    }
+
+    start() {
+      if (this.running) return;
+      this.running = true;
+      this.startedAt = nowMs();
+      this.slots = [this._makeSlot("A"), this._makeSlot("B")];
+      this._startSlot(this.slots[0]);
+      this.slots[1].startTimer = setTimeout(() => this._startSlot(this.slots[1]), 15000);
+    }
+
+    _makeSlot(id) {
+      return { id, recorder: null, chunks: [], startMs: null, stopMs: null, stopTimer: null, startTimer: null, generation: 0 };
+    }
+
+    _startSlot(slot) {
+      if (!this.running) return;
+      const generation = ++slot.generation;
+      slot.chunks = [];
+      slot.startMs = nowMs();
+      slot.stopMs = null;
+
+      let recorder;
+      try {
+        recorder = this.mimeType
+          ? new MediaRecorder(this.stream, { mimeType: this.mimeType, videoBitsPerSecond: this.options.videoBitsPerSecond })
+          : new MediaRecorder(this.stream);
+      } catch (e) {
+        recorder = new MediaRecorder(this.stream);
+      }
+      slot.recorder = recorder;
+
+      recorder.addEventListener("dataavailable", event => {
+        if (event.data && event.data.size > 0) {
+          slot.chunks.push(event.data);
+          this.dispatchEvent(new CustomEvent("segment", { detail: { slot: slot.id } }));
+        }
+      });
+
+      recorder.addEventListener("error", event => {
+        this.dispatchEvent(new CustomEvent("recordererror", { detail: { slot: slot.id, error: event.error || event } }));
+      });
+
+      recorder.addEventListener("stop", () => {
+        const endMs = slot.stopMs ?? nowMs();
+        const blob = new Blob(slot.chunks, { type: recorder.mimeType || this.mimeType || "video/webm" });
+        if (blob.size > 0) {
+          this.segments.push({
+            id: `${slot.id}-${generation}`,
+            slot: slot.id,
+            startMs: slot.startMs,
+            endMs,
+            durationMs: Math.max(0, endMs - slot.startMs),
+            blob,
+            mimeType: blob.type
+          });
+          const cutoff = nowMs() - this.options.maxAgeMs;
+          this.segments = this.segments.filter(s => s.endMs >= cutoff);
+          this.dispatchEvent(new CustomEvent("segment", {}));
+        }
+        slot.chunks = [];
+        slot.recorder = null;
+        if (this.running) {
+          slot.startTimer = setTimeout(() => this._startSlot(slot), 20);
+        }
+      }, { once: true });
+
+      recorder.start(500);
+      slot.stopTimer = setTimeout(() => {
+        if (recorder.state === "recording") {
+          slot.stopMs = nowMs();
+          recorder.stop();
+        }
+      }, 32000);
+    }
+
+    getBufferStatus() {
+      const time = nowMs();
+      const activeAges = this.slots
+        .filter(s => s.recorder && s.recorder.state === "recording" && s.startMs != null)
+        .map(s => time - s.startMs);
+      const maxActiveMs = activeAges.length ? Math.max(...activeAges) : 0;
+      const totalElapsedMs = this.startedAt == null ? 0 : time - this.startedAt;
+      const coveredMs = Math.max(0, Math.min(this.options.clipDurationMs, Math.max(maxActiveMs, totalElapsedMs)));
+      const totalChunks = this.slots.reduce((acc, s) => acc + (s.chunks ? s.chunks.length : 0), 0);
+      return {
+        available: coveredMs >= 1000,
+        coveredMs,
+        requiredMs: this.options.clipDurationMs,
+        segmentCount: totalChunks
+      };
+    }
+
+    async captureClip(triggerAt = nowMs()) {
+      if (!this.running) throw new Error("Rolling buffer is not running.");
+      const activeSlots = this.slots
+        .filter(s => s.recorder && s.recorder.state === "recording" && s.chunks.length > 0)
+        .sort((a, b) => a.startMs - b.startMs);
+
+      if (activeSlots.length > 0) {
+        const bestSlot = activeSlots[0];
+        await new Promise(resolve => {
+          const rec = bestSlot.recorder;
+          if (!rec || rec.state !== "recording") { resolve(); return; }
+          const t = setTimeout(resolve, 600);
+          rec.addEventListener("stop", () => { clearTimeout(t); resolve(); }, { once: true });
+          clearTimeout(bestSlot.stopTimer);
+          bestSlot.stopMs = nowMs();
+          try { rec.stop(); } catch { resolve(); }
+        });
+
+        const latestSeg = this.segments[this.segments.length - 1];
+        if (latestSeg && latestSeg.blob && latestSeg.blob.size > 0) {
+          const clipDurMs = Math.min(this.options.clipDurationMs, Math.max(500, latestSeg.durationMs));
+          return {
+            blob: latestSeg.blob,
+            durationMs: clipDurMs,
+            triggerAt
+          };
+        }
+      }
+
+      if (this.segments.length > 0) {
+        const seg = this.segments[this.segments.length - 1];
+        return {
+          blob: seg.blob,
+          durationMs: Math.min(this.options.clipDurationMs, seg.durationMs),
+          triggerAt
+        };
+      }
+      throw new Error("Wait 1-2 seconds for video frames to buffer, then try again.");
+    }
+
+    stop() {
+      this.running = false;
+      for (const slot of this.slots) {
+        clearTimeout(slot.startTimer);
+        clearTimeout(slot.stopTimer);
+        if (slot.recorder && slot.recorder.state === "recording") {
+          try { slot.recorder.stop(); } catch {}
+        }
+      }
+    }
+  }
+
+  class TwitchIRC {
+    constructor(channel, { onClipCommand = () => {}, onMessage = () => {}, cooldownMs = 5000 } = {}) {
+      this.channel = (channel || "").trim().toLowerCase().replace(/^[@#]/, "");
+      this.onClipCommand = onClipCommand;
+      this.onMessage = onMessage;
+      this.cooldownMs = cooldownMs;
+      this.lastClipAt = 0;
+      this.socket = null;
+      this.manualClose = false;
+    }
+
+    connect() {
+      if (!this.channel || this.channel === "your_channel") {
+        this.channel = "riotgames";
+      }
+      this.manualClose = false;
+      this.socket = new WebSocket("wss://irc-ws.chat.twitch.tv:443");
+      this.socket.addEventListener("open", () => {
+        this.socket.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
+        this.socket.send("PASS SCHMOOPIIE");
+        this.socket.send(`NICK justinfan${Math.floor(Math.random() * 900000 + 100000)}`);
+        this.socket.send(`JOIN #${this.channel}`);
+      });
+      this.socket.addEventListener("message", event => this._handle(event.data));
+    }
+
+    _handle(raw) {
+      for (const line of String(raw).split(/\r\n/)) {
+        if (!line) continue;
+        if (line.startsWith("PING")) {
+          if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send("PONG :tmi.twitch.tv");
+          }
+          continue;
+        }
+        const match = line.match(/(?:^| ):(\w+)!.*? PRIVMSG #\S+ :(.*)$/);
+        if (!match) continue;
+        const message = { username: match[1], text: match[2], receivedAt: performance.now() };
+        this.onMessage(message);
+        if (message.text.trim().toLowerCase().includes("!clip")) {
+          const now = Date.now();
+          if (now - this.lastClipAt < this.cooldownMs) continue;
+          this.lastClipAt = now;
+          this.onClipCommand(message);
+        }
+      }
+    }
+
+    disconnect() {
+      this.manualClose = true;
+      if (this.socket) try { this.socket.close(); } catch {}
+      this.socket = null;
+    }
+  }
+
+  // UI Wiring
+  const $ = id => document.getElementById(id);
+  const source = $("source");
+  const canvas = $("output");
+  const status = $("status");
+  const startButton = $("start");
+  const clipButton = $("clip");
+  const captureButton = $("capture");
+  const stopButton = $("stop");
+  const connectButton = $("connect");
+  const disconnectButton = $("disconnect");
+
+  let displayStream = null;
+  let pipeline = null;
+  let recordingStream = null;
+  let buffer = null;
+  let pollTimer = null;
+  let irc = null;
+  let lastObjectURL = null;
+  let busy = false;
+
+  function setStatus(msg) { status.textContent = msg; }
+
+  function showExportedVideo(blob, durationMs, username = "manual") {
+    if (lastObjectURL) URL.revokeObjectURL(lastObjectURL);
+    lastObjectURL = URL.createObjectURL(blob);
+    const link = $("download");
+    link.href = lastObjectURL;
+    link.download = `streamclip-${username}-${new Date().toISOString().replaceAll(":", "-")}.webm`;
+    link.textContent = `Download 9:16 WebM (${(blob.size / 1024 / 1024).toFixed(2)} MB)`;
+    link.hidden = false;
+    link.style.display = "inline-block";
+    link.style.marginBottom = "12px";
+    link.style.color = "#00f59b";
+    link.style.fontWeight = "bold";
+
+    const result = $("result");
+    result.src = lastObjectURL;
+    result.hidden = false;
+    result.style.display = "block";
+    $("metadata").textContent =
+      `Trigger: ${new Date().toISOString()}\n` +
+      `Clipped by: ${$("clipper").value || `@${username}`}\n` +
+      `Duration: ${(durationMs / 1000).toFixed(1)} seconds\n` +
+      `Output size: ${(blob.size / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  async function exportAt(triggerAt, username = "manual") {
+    if (!buffer || busy) return;
+    busy = true;
+    clipButton.disabled = true;
+    try {
+      setStatus("Finalizing 9:16 WebM clip from rolling buffer…");
+      const result = await buffer.captureClip(triggerAt);
+      showExportedVideo(result.blob, result.durationMs, username);
+      setStatus(`✅ Clip ready! ${(result.durationMs / 1000).toFixed(1)}s 9:16 WebM (${(result.blob.size / 1024 / 1024).toFixed(2)} MB). Play or download below under Latest export!`);
+    } catch (err) {
+      console.error(err);
+      setStatus(`Clip error: ${err.message}`);
+    } finally {
+      busy = false;
+      clipButton.disabled = false;
+    }
+  }
+
+  function startRollingBufferNow() {
+    if (!recordingStream) {
+      setStatus("Click 'Capture screen / Twitch tab' first.");
+      return;
+    }
+    if (buffer) buffer.stop();
+    clearInterval(pollTimer);
+
+    buffer = new RollingClipBuffer(recordingStream);
+    const updateReadout = () => {
+      if (!buffer || busy) return;
+      const st = buffer.getBufferStatus();
+      const secs = Math.min(30, Math.round(st.coveredMs / 1000));
+      startButton.textContent = `🟢 Buffer Active (${secs}/30s)`;
+      startButton.style.background = "#059669";
+      startButton.style.borderColor = "#10b981";
+      setStatus(`🟢 Rolling buffer active — ${secs}/30 seconds buffered (${st.segmentCount} chunks retained). Ready to clip!`);
+    };
+
+    buffer.addEventListener("segment", updateReadout);
+    buffer.start();
+    startButton.disabled = false;
+    startButton.textContent = "🟢 Buffer Active (0/30s)";
+    startButton.style.background = "#059669";
+    startButton.style.borderColor = "#10b981";
+    clipButton.disabled = false;
+    setStatus("🟢 Rolling buffer started! Recording 9:16 vertical stream…");
+    pollTimer = setInterval(updateReadout, 1000);
+  }
+
+  captureButton.addEventListener("click", async () => {
+    try {
+      displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30, max: 30 } },
+        audio: true
+      });
+      source.srcObject = displayStream;
+      await source.play();
+
+      const chVal = ($("channel").value || "").trim();
+      const streamerName = chVal && chVal !== "YOUR_CHANNEL" ? `@${chVal.replace(/^[@#]/, "")}` : "@streamer";
+
+      pipeline = new CanvasPipeline({
+        video: source,
+        canvas,
+        streamer: streamerName,
+        clipper: $("clipper").value || "@viewer"
+      });
+      pipeline.setLayout($("layout").value);
+      pipeline.start();
+
+      recordingStream = pipeline.createStream(displayStream);
+      startButton.disabled = false;
+      stopButton.disabled = false;
+      connectButton.disabled = false;
+
+      // Auto-start rolling buffer immediately upon capture
+      startRollingBufferNow();
+
+      displayStream.getVideoTracks()[0].addEventListener("ended", stopAll);
+    } catch (err) {
+      setStatus(`Capture was not started: ${err.message}`);
+    }
+  });
+
+  $("layout").addEventListener("change", ev => pipeline && pipeline.setLayout(ev.target.value));
+  $("clipper").addEventListener("input", ev => { if (pipeline) pipeline.clipper = ev.target.value || "@viewer"; });
+  $("channel").addEventListener("input", ev => {
+    if (pipeline) {
+      const v = ev.target.value.trim();
+      pipeline.streamer = v && v !== "YOUR_CHANNEL" ? `@${v.replace(/^[@#]/, "")}` : "@streamer";
+    }
+  });
+
+  startButton.addEventListener("click", startRollingBufferNow);
+  clipButton.addEventListener("click", () => exportAt(performance.now(), "manual"));
+
+  connectButton.addEventListener("click", () => {
+    try {
+      if (irc) irc.disconnect();
+      let chInput = ($("channel").value || "").trim();
+      if (!chInput || chInput.toLowerCase() === "your_channel") {
+        chInput = "riotgames";
+        $("channel").value = chInput;
+      }
+      const chatStatusBox = $("chatStatus");
+      irc = new TwitchIRC(chInput, {
+        onMessage: msg => {
+          if (chatStatusBox) {
+            chatStatusBox.textContent = `🟢 #${irc.channel} — ${msg.username}: ${msg.text}`;
+          }
+        },
+        onClipCommand: msg => {
+          const clipper = `@${msg.username}`;
+          $("clipper").value = clipper;
+          if (pipeline) pipeline.clipper = clipper;
+          if (chatStatusBox) {
+            chatStatusBox.textContent = `⚡ ${clipper} typed !clip in #${irc.channel}! Exporting clip…`;
+          }
+          setStatus(`${clipper} typed !clip in chat! Exporting clip…`);
+          exportAt(msg.receivedAt, msg.username);
+        }
+      });
+      irc.connect();
+      connectButton.disabled = false;
+      connectButton.textContent = `🟢 Chat Connected (#${irc.channel})`;
+      connectButton.style.background = "#059669";
+      connectButton.style.borderColor = "#10b981";
+      disconnectButton.disabled = false;
+      if (chatStatusBox) {
+        chatStatusBox.style.borderLeftColor = "#10b981";
+        chatStatusBox.textContent = `🟢 Connected to Twitch IRC (#${irc.channel}) — Listening for !clip in live chat…`;
+      }
+    } catch (err) {
+      setStatus(err.message);
+    }
+  });
+
+  disconnectButton.addEventListener("click", () => {
+    if (irc) irc.disconnect();
+    irc = null;
+    connectButton.disabled = false;
+    connectButton.textContent = "🟣 Connect anonymous chat";
+    connectButton.style.background = "";
+    connectButton.style.borderColor = "";
+    disconnectButton.disabled = true;
+    const chatStatusBox = $("chatStatus");
+    if (chatStatusBox) {
+      chatStatusBox.style.borderLeftColor = "#9147ff";
+      chatStatusBox.textContent = "💬 Twitch Chat: Disconnected.";
+    }
+  });
+
+  function stopAll() {
+    clearInterval(pollTimer);
+    if (buffer) buffer.stop();
+    if (pipeline) pipeline.stop();
+    if (displayStream) displayStream.getTracks().forEach(t => t.stop());
+    if (recordingStream) recordingStream.getTracks().forEach(t => t.stop());
+    buffer = null;
+    displayStream = null;
+    recordingStream = null;
+    startButton.disabled = true;
+    startButton.textContent = "Start rolling buffer";
+    startButton.style.background = "";
+    startButton.style.borderColor = "";
+    clipButton.disabled = true;
+    stopButton.disabled = true;
+    setStatus("Capture stopped.");
+  }
+
+  stopButton.addEventListener("click", stopAll);
+})();
+</script>
+</body>
+</html>

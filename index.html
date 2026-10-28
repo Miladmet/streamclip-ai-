@@ -1,213 +1,905 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StreamClip AI — Twitch Live Clip to 9:16 Viral Shorts</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StreamClip AI — Milestone 1</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: #101014; color: #f5f5f7; }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { margin: 0 0 8px; } p { color: #b8b8c2; line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr); gap: 20px; }
+    .panel { background: #1a1a22; border: 1px solid #30303b; border-radius: 14px; padding: 16px; }
+    video { width: 100%; background: #050507; border-radius: 10px; max-height: 520px; }
+    canvas { width: min(100%, 360px); aspect-ratio: 9 / 16; background: #050507; border: 1px solid #444; border-radius: 10px; }
+    button, select, input { border: 1px solid #494957; background: #262632; color: white; padding: 10px 12px; border-radius: 8px; font: inherit; }
+    button { cursor: pointer; } button.primary { background: #9147ff; border-color: #9147ff; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .status { padding: 10px; border-radius: 8px; background: #252530; color: #d7d7df; white-space: pre-wrap; }
+    .small { font-size: 13px; color: #9999a8; }
+    label { display: block; margin: 10px 0 6px; color: #c9c9d2; font-size: 13px; }
+    .hype-box { background: #15151c; border: 1px solid #30303b; border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+    .hype-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px; }
+    .hype-bar-bg { width: 100%; height: 8px; background: #252530; border-radius: 99px; overflow: hidden; }
+    .hype-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #9147ff, #f59e0b, #10b981); transition: width 0.25s ease; }
+    .codex-box { background: rgba(16, 185, 129, 0.07); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px; margin: 12px 0; }
+    .codex-item { background: #14141b; border: 1px solid #2d2d3a; border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .vault-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .vault-item { background: #14141b; border: 1px solid #2d2d3a; border-radius: 8px; padding: 10px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background: rgba(145, 71, 255, 0.2); color: #c4b5fd; border: 1px solid rgba(145, 71, 255, 0.4); }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
-  <!-- Header Navigation -->
-  <header class="header">
-    <div class="logo-group">
-      <div class="twitch-badge">
-        <svg class="twitch-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
-        </svg>
-      </div>
-      <div class="brand-text">
-        <h1>StreamClip <span class="highlight">AI</span></h1>
-        <p class="subtitle">Live Twitch Buffer &rarr; 9:16 Viral Shorts in 1-Click (Powered by OpenAI Codex)</p>
-      </div>
-    </div>
-    <div class="header-actions">
-      <span class="status-badge" id="bufferStatus"><span class="pulse-dot"></span> Buffer: Active (30s)</span>
-      <span class="status-badge twitch-status-badge" id="twitchConnBadge"><span class="status-dot offline" id="twitchStatusDot"></span> Twitch Chat: Sim Mode</span>
-      <button class="btn btn-secondary" id="openChatSimBtn">💬 Chat Simulator</button>
-      <button class="btn btn-twitch" id="toggleTwitchConnectBtn">🟣 Connect Live Twitch Chat</button>
-    </div>
-  </header>
+<main>
+  <h1>StreamClip AI <span class="badge">Codex x TwitchCon Edition</span></h1>
+  <p>Rolling 30-second 9:16 vertical buffer, real-time facecam split crop, Twitch IRC Hype-Spike auto-clipper, and OpenAI Codex viral packaging.</p>
 
-  <!-- Live Twitch Channel Connection Bar -->
-  <section class="twitch-connect-bar" id="twitchConnectBar">
-    <div class="twitch-bar-left">
-      <span class="twitch-bar-label">🟣 Live Twitch IRC WebSocket Listener:</span>
-      <div class="twitch-channel-input-group">
-        <span class="channel-prefix">twitch.tv/</span>
-        <input type="text" id="liveChannelInput" value="riotgames" placeholder="channel_name (e.g. shroud, riotgames)">
-        <button class="btn btn-sm btn-primary" id="connectChannelBtn">Connect Channel</button>
-        <button class="btn btn-sm btn-outline" id="disconnectChannelBtn" style="display:none;">Disconnect</button>
+  <div class="grid">
+    <section class="panel">
+      <h2>Source video</h2>
+      <video id="source" autoplay muted playsinline></video>
+      <div class="controls">
+        <button id="capture" class="primary">Capture screen / Twitch tab</button>
+        <button id="stop" disabled>Stop capture</button>
       </div>
-      <div class="trigger-keyword-group">
-        <label for="triggerKeywordInput">Trigger Cmd:</label>
-        <input type="text" id="triggerKeywordInput" value="!clip" title="Chat command that triggers an automatic 9:16 clip">
+      <p class="small">Choose a browser tab containing the stream and enable tab audio in the browser's sharing dialog. This demo does not bypass Twitch player restrictions.</p>
+      <h2>Vertical preview (9:16)</h2>
+      <canvas id="output" width="720" height="1280"></canvas>
+      <div class="controls">
+        <select id="layout">
+          <option value="center">Center crop (Crosshair / Action)</option>
+          <option value="split">Split: Top-Right Facecam + Gameplay</option>
+          <option value="split_left">Split: Top-Left Facecam + Gameplay</option>
+          <option value="blur">Pillarbox Blur background</option>
+        </select>
       </div>
-    </div>
-    <div class="twitch-bar-right">
-      <div class="live-chat-ticker" id="liveChatTicker">
-        <span class="ticker-placeholder">Enter any live Twitch channel above to listen for real-time <code>!clip</code> triggers in chat...</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- Main Container -->
-  <main class="main-layout">
-    <!-- Left Column: Video Player & Live Buffer -->
-    <section class="panel video-panel">
-      <div class="panel-header">
-        <h2>🎥 Live Stream Monitor</h2>
-        <div class="controls-row">
-          <button class="btn btn-sm btn-outline" id="loadDemoStreamBtn">▶️ Load Demo Gaming Stream</button>
-          <button class="btn btn-sm btn-outline" id="captureScreenBtn">🖥️ Capture My Screen / Tab</button>
-        </div>
-      </div>
-
-      <div class="video-container">
-        <video id="liveVideo" autoplay loop muted playsinline crossorigin="anonymous"></video>
-        <canvas id="bufferCanvas" style="display:none;"></canvas>
-        <div class="video-overlay-hud">
-          <span class="live-tag">LIVE</span>
-          <span class="viewer-tag">👥 4,218 viewers</span>
-          <span class="fps-tag">60 FPS 1080p</span>
-        </div>
-      </div>
-
-      <!-- Buffer Timeline -->
-      <div class="buffer-timeline-card">
-        <div class="buffer-info">
-          <span>Circular Memory Buffer: <strong>Last 30 Seconds</strong></span>
-          <span id="bufferTimer">30.0s available</span>
-        </div>
-        <div class="buffer-progress-bar">
-          <div class="buffer-progress-fill" id="bufferFill" style="width: 100%;"></div>
-        </div>
-        <div class="trigger-actions">
-          <button class="btn btn-primary btn-lg" id="clipNowBtn">
-            ⚡ Clip Last 30 Seconds (!clip)
-          </button>
-        </div>
-      </div>
-
-      <!-- Live Twitch Chat Stream Feed Card -->
-      <div class="live-chat-panel-card">
-        <div class="live-chat-card-header">
-          <div class="live-chat-title-group">
-            <h3>💬 Live Twitch Chat Trigger Feed</h3>
-            <span class="chat-channel-pill" id="activeChannelPill">#sim-chat</span>
-          </div>
-          <button class="btn btn-xs btn-outline" id="quickSimClipBtn" title="Simulate a viewer typing !clip right now">⚡ Test !clip</button>
-        </div>
-        <div class="live-chat-log" id="mainChatLog">
-          <div class="chat-msg"><span class="chatter-name" style="color:#10b981;">xX_Sniper_Xx:</span> PogChamp THAT CROSSHAIR PLACEMENT!</div>
-          <div class="chat-msg"><span class="chatter-name" style="color:#a855f7;">Nightbot:</span> Type <code>!clip</code> in chat to capture the last 30s in 9:16 vertical format!</div>
-          <div class="chat-msg"><span class="chatter-name" style="color:#3b82f6;">TwitchFan99:</span> SOMEONE CLIP THAT RIGHT NOW 🔥</div>
-        </div>
+      <label for="hookOverlayInput">On-Video Viral Hook Banner (Baked into 9:16 video)</label>
+      <div class="controls" style="margin-top: 4px;">
+        <input id="hookOverlayInput" value="WAIT FOR THIS CLUTCH 😱🔥" placeholder="Type on-screen hook (or leave blank)" style="flex: 1;" />
+        <button id="cycleHookBtn" type="button">🎲 Next Hook</button>
       </div>
     </section>
 
-    <!-- Right Column: 9:16 Vertical Export & Codex AI -->
-    <section class="panel export-panel">
-      <div class="panel-header">
-        <h2>📱 9:16 Vertical Preview (TikTok / Shorts)</h2>
-        <span class="badge-pill" id="recorderFormatBadge">9:16 Canvas Recorder</span>
+    <section class="panel">
+      <h2>Clip controls</h2>
+      <label for="channel">Twitch channel (IRC listener)</label>
+      <input id="channel" value="riotgames" placeholder="e.g. shroud, riotgames, kaicenat" />
+      <label for="clipper">Clip attribution</label>
+      <input id="clipper" value="@viewer" />
+      <div class="controls">
+        <button id="start" class="primary" disabled>Start rolling buffer</button>
+        <button id="clip" disabled>⚡ Clip last 30 seconds</button>
+      </div>
+      <div class="controls">
+        <button id="connect" class="primary">🟣 Connect anonymous chat</button>
+        <button id="disconnect" disabled>Disconnect chat</button>
+        <button id="simHypeBtn" type="button" style="border-color:#f59e0b; color:#fcd34d;">🔥 Simulate Chat Hype Spike</button>
       </div>
 
-      <!-- Vertical Phone Frame -->
-      <div class="phone-mockup-wrapper">
-        <div class="phone-frame">
-          <canvas id="verticalExportCanvas" width="720" height="1280"></canvas>
-          <div class="phone-watermark-overlay" id="watermarkPreviewOverlay" style="display:none;">
-            <div class="watermark-streamer" id="streamerBadgePreview">
-              <span class="wm-twitch-icon">🟣</span>
-              <span id="previewStreamerTag">@MilmannLive</span>
-            </div>
-            <div class="watermark-clipper" id="clipperBadgePreview">
-              Clipped by <span id="previewClipperTag">@TwitchFan99</span>
-            </div>
-          </div>
+      <!-- Hype-Spike Velocity Meter -->
+      <div class="hype-box">
+        <div class="hype-header">
+          <span>🔥 <strong>Chat Hype-Spike Detector</strong> <span id="hypeScoreText" style="color:#10b981;">(0% Hype)</span></span>
+          <label style="margin:0; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+            <input type="checkbox" id="autoHypeClipToggle" checked style="padding:0;" /> Auto-clip at 100%
+          </label>
+        </div>
+        <div class="hype-bar-bg">
+          <div class="hype-bar-fill" id="hypeBarFill"></div>
         </div>
       </div>
 
-      <!-- Settings & Customization -->
-      <div class="settings-card">
-        <h3>🎨 Branding & Watermark Settings</h3>
-        <div class="input-grid">
-          <div class="input-field">
-            <label for="streamerHandleInput">Streamer Handle</label>
-            <input type="text" id="streamerHandleInput" value="@MilmannLive" placeholder="@YourTwitchName">
-          </div>
-          <div class="input-field">
-            <label for="clipperHandleInput">Viewer Attribution (Clipped By)</label>
-            <input type="text" id="clipperHandleInput" value="@EpicGamer42" placeholder="@ViewerName">
-          </div>
-          <div class="input-field">
-            <label for="cropFocusSelect">Smart Crop Alignment</label>
-            <select id="cropFocusSelect">
-              <option value="center" selected>Center Action (Crosshair / Gameplay)</option>
-              <option value="split">Split Cam + Gameplay</option>
-              <option value="blur_bg">Pillarbox Blur Background</option>
-            </select>
-          </div>
-          <div class="input-field">
-            <label for="clipDurationSelect">Clip Window</label>
-            <select id="clipDurationSelect">
-              <option value="15">Last 15 Seconds (Fast Action)</option>
-              <option value="30" selected>Last 30 Seconds (Full Play)</option>
-            </select>
-          </div>
-        </div>
+      <div class="status" id="chatStatus" style="margin-bottom: 8px; border-left: 3px solid #9147ff; font-size: 13px;">💬 Twitch Chat: Ready — Click "Connect anonymous chat" or "Simulate Chat Hype Spike"</div>
+      <div class="status" id="status">Select a screen or browser tab to begin.</div>
 
-        <!-- Codex Viral Title Generator -->
-        <div class="codex-ai-card">
-          <div class="codex-header">
-            <h4>🤖 OpenAI Codex Title & Hashtag Generator</h4>
-            <button class="btn btn-xs btn-codex" id="generateCodexTitlesBtn">⚡ Generate Viral Hooks</button>
-          </div>
-          <div class="codex-results" id="codexResultsBox">
-            <div class="codex-hook-item">
-              <strong>Hook 1:</strong> "THEY DID NOT EXPECT THIS PLAY 😱 #gaming #twitch #twitchclips"
-            </div>
-          </div>
+      <!-- OpenAI Codex Viral Packaging Box -->
+      <div class="codex-box">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="color:#10b981; font-size:14px;">🤖 OpenAI Codex Viral Title &amp; Hashtag Pack</strong>
+          <button id="regenCodexBtn" type="button" style="padding:4px 10px; font-size:12px;">✨ Regenerate</button>
         </div>
+        <div id="codexHooksList"></div>
+      </div>
 
-        <!-- Download & Export Button -->
-        <div class="export-actions">
-          <button class="btn btn-success btn-lg" id="exportVideoBtn" disabled>
-            💾 Render & Download 9:16 Video (MP4)
-          </button>
-        </div>
+      <h2>Latest export</h2>
+      <div class="controls" id="exportLinksRow" style="display:none;">
+        <a id="download" hidden style="background:#059669; color:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px;">💾 Download 9:16 WebM</a>
+        <a id="downloadThumb" hidden style="background:#262632; border:1px solid #494957; color:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; font-size:13px;">📸 Save 9:16 Cover PNG</a>
+      </div>
+      <video id="result" controls playsinline hidden></video>
+      <pre id="metadata" class="small"></pre>
+
+      <div id="vaultSection" style="display:none; margin-top: 16px;">
+        <h3 style="font-size:15px; margin:0 0 6px;">🗂️ Session Clip Vault (<span id="vaultCount">0</span>)</h3>
+        <div class="vault-list" id="vaultList"></div>
       </div>
     </section>
-  </main>
-
-  <!-- Twitch Chat Simulator Modal -->
-  <div class="modal-backdrop" id="chatModal" style="display:none;">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>💬 Twitch Chat Event Simulator</h3>
-        <button class="close-btn" id="closeChatModalBtn">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-desc">Simulate a real Twitch viewer typing <code>!clip</code> in your stream chat:</p>
-        <div class="chat-feed" id="chatFeed">
-          <div class="chat-msg"><span class="chatter-name" style="color:#10b981;">xX_Sniper_Xx:</span> PogChamp THAT SHOT!</div>
-          <div class="chat-msg"><span class="chatter-name" style="color:#3b82f6;">TwitchFan99:</span> CLIP THAT RIGHT NOW</div>
-        </div>
-        <div class="chat-input-row">
-          <input type="text" id="simChatInput" value="!clip" placeholder="Type !clip or any message">
-          <button class="btn btn-primary" id="sendSimChatBtn">Send to Stream</button>
-        </div>
-      </div>
-    </div>
   </div>
+</main>
+<script>
+(() => {
+  const DEFAULTS = {
+    clipDurationMs: 30000,
+    segmentDurationMs: 41000,
+    staggerMs: 10000,
+    maxAgeMs: 75000,
+    videoBitsPerSecond: 3500000,
+    audioBitsPerSecond: 128000
+  };
 
-  <footer class="footer">
-    <p>StreamClip AI &bull; Built with OpenAI Codex for the Codex x TwitchCon 2026 Hackathon &bull; 100% Client-Side Canvas Engine &bull; Zero Server Bandwidth Fees</p>
-  </footer>
+  function nowMs() {
+    return performance.now();
+  }
 
-  <script src="app.js"></script>
+  function chooseMimeType(hasAudio) {
+    const candidates = hasAudio
+      ? ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"]
+      : ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"];
+    return candidates.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  class CanvasPipeline {
+    constructor({ video, canvas, layout = "center", streamer = "@streamer", clipper = "@viewer", hookBanner = "", fps = 30 }) {
+      this.video = video;
+      this.canvas = canvas;
+      this.ctx = canvas.getContext("2d", { alpha: false });
+      this.layout = layout;
+      this.streamer = streamer;
+      this.clipper = clipper;
+      this.hookBanner = hookBanner;
+      this.fps = fps;
+      this.raf = null;
+      this.running = false;
+      canvas.width = 720;
+      canvas.height = 1280;
+    }
+
+    setLayout(layout) {
+      if (!["center", "blur", "split", "split_left"].includes(layout)) return;
+      this.layout = layout;
+    }
+
+    renderFrame() {
+      const v = this.video;
+      if (!v || v.readyState < 2 || !v.videoWidth || !v.videoHeight) return;
+      const c = this.ctx, W = 720, H = 1280;
+
+      if (this.layout === "center") {
+        const ratio = 9 / 16;
+        const cropW = Math.min(v.videoWidth, v.videoHeight * ratio);
+        const cropH = cropW / ratio;
+        c.drawImage(v, (v.videoWidth - cropW) / 2, (v.videoHeight - cropH) / 2, cropW, cropH, 0, 0, W, H);
+      } else if (this.layout === "blur") {
+        c.save();
+        c.filter = "blur(32px) brightness(.42)";
+        c.drawImage(v, -70, -70, W + 140, H + 140);
+        c.restore();
+        const scale = Math.min(W / v.videoWidth, H / v.videoHeight);
+        const w = v.videoWidth * scale, h = v.videoHeight * scale;
+        c.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
+      } else {
+        // Real Split-Screen Facecam (Top 410px) + Center Gameplay (Bottom 870px)
+        const topH = 410;
+        const botH = H - topH;
+        const camW = Math.round(v.videoWidth * 0.28);
+        const camH = Math.round(v.videoHeight * 0.28);
+        const camX = this.layout === "split_left"
+          ? Math.round(v.videoWidth * 0.02)
+          : v.videoWidth - camW - Math.round(v.videoWidth * 0.02);
+        const camY = Math.round(v.videoHeight * 0.03);
+
+        // Top: Zoomed Streamer Facecam Region
+        c.drawImage(v, camX, camY, camW, camH, 0, 0, W, topH);
+
+        // Bottom: Center Action Gameplay
+        const cropW = Math.min(v.videoWidth, v.videoHeight * (W / botH));
+        c.drawImage(v, (v.videoWidth - cropW) / 2, 0, cropW, v.videoHeight, 0, topH, W, botH);
+
+        // Glowing Twitch Purple Split Divider
+        c.save();
+        c.strokeStyle = "#9147ff";
+        c.lineWidth = 6;
+        c.beginPath();
+        c.moveTo(0, topH);
+        c.lineTo(W, topH);
+        c.stroke();
+        c.restore();
+      }
+
+      c.save();
+      // Top-Left Streamer Watermark Pill
+      c.fillStyle = "rgba(16, 16, 20, 0.82)";
+      c.strokeStyle = "#9147ff";
+      c.lineWidth = 2.5;
+      c.beginPath();
+      if (c.roundRect) c.roundRect(20, 20, 260, 44, 22);
+      else c.rect(20, 20, 260, 44);
+      c.fill();
+      c.stroke();
+
+      c.font = "bold 22px sans-serif";
+      c.fillStyle = "#fff";
+      c.fillText("🟣 " + this.streamer, 34, 49);
+
+      // On-Video Viral Hook Banner (Lower-Third TikTok/Shorts Style)
+      if (this.hookBanner && this.hookBanner.trim()) {
+        c.fillStyle = "rgba(16, 16, 20, 0.86)";
+        c.strokeStyle = "#10b981";
+        c.lineWidth = 2.5;
+        c.beginPath();
+        if (c.roundRect) c.roundRect(36, H - 140, W - 72, 56, 14);
+        else c.rect(36, H - 140, W - 72, 56);
+        c.fill();
+        c.stroke();
+
+        c.font = "bold 23px sans-serif";
+        c.fillStyle = "#ffffff";
+        c.textAlign = "center";
+        c.fillText(this.hookBanner.trim().slice(0, 36), W / 2, H - 104);
+        c.textAlign = "left";
+      }
+
+      // Bottom Attribution Pill
+      c.font = "bold 20px sans-serif";
+      c.fillStyle = "#10b981";
+      c.shadowColor = "#000";
+      c.shadowBlur = 6;
+      c.fillText(`⚡ Clipped by ${this.clipper}`, 28, H - 32);
+      c.restore();
+    }
+
+    start() {
+      if (this.running) return;
+      this.running = true;
+      const tick = () => {
+        if (!this.running) return;
+        this.renderFrame();
+        this.raf = requestAnimationFrame(tick);
+      };
+      tick();
+    }
+
+    stop() {
+      this.running = false;
+      if (this.raf != null) cancelAnimationFrame(this.raf);
+    }
+
+    createStream(audioSourceStream) {
+      const videoStream = this.canvas.captureStream(this.fps);
+      const tracks = [
+        ...videoStream.getVideoTracks(),
+        ...(audioSourceStream?.getAudioTracks() || [])
+      ];
+      return new MediaStream(tracks);
+    }
+  }
+
+  class RollingClipBuffer extends EventTarget {
+    constructor(stream, options = {}) {
+      super();
+      this.stream = stream;
+      this.options = { ...DEFAULTS, ...options };
+      this.mimeType = chooseMimeType(stream.getAudioTracks().length > 0);
+      this.segments = [];
+      this.slots = [];
+      this.running = false;
+      this.startedAt = null;
+    }
+
+    start() {
+      if (this.running) return;
+      this.running = true;
+      this.startedAt = nowMs();
+      // 4 staggered slots (0s, 10s, 20s, 30s) each recording for 41s guarantees
+      // that at EVERY timestamp t >= 30s, at least one active slot holds >= 30s of continuous video!
+      this.slots = [this._makeSlot("A"), this._makeSlot("B"), this._makeSlot("C"), this._makeSlot("D")];
+      this.slots.forEach((slot, idx) => {
+        if (idx === 0) {
+          this._startSlot(slot);
+        } else {
+          slot.startTimer = setTimeout(() => this._startSlot(slot), idx * this.options.staggerMs);
+        }
+      });
+    }
+
+    _makeSlot(id) {
+      return { id, recorder: null, chunks: [], startMs: null, stopMs: null, stopTimer: null, startTimer: null, generation: 0 };
+    }
+
+    _startSlot(slot) {
+      if (!this.running) return;
+      const generation = ++slot.generation;
+      slot.chunks = [];
+      slot.startMs = nowMs();
+      slot.stopMs = null;
+
+      let recorder;
+      try {
+        recorder = this.mimeType
+          ? new MediaRecorder(this.stream, { mimeType: this.mimeType, videoBitsPerSecond: this.options.videoBitsPerSecond })
+          : new MediaRecorder(this.stream);
+      } catch (e) {
+        recorder = new MediaRecorder(this.stream);
+      }
+      slot.recorder = recorder;
+
+      recorder.addEventListener("dataavailable", event => {
+        if (event.data && event.data.size > 0) {
+          slot.chunks.push(event.data);
+          this.dispatchEvent(new CustomEvent("segment", { detail: { slot: slot.id } }));
+        }
+      });
+
+      recorder.addEventListener("error", event => {
+        this.dispatchEvent(new CustomEvent("recordererror", { detail: { slot: slot.id, error: event.error || event } }));
+      });
+
+      recorder.addEventListener("stop", () => {
+        const endMs = slot.stopMs ?? nowMs();
+        const blob = new Blob(slot.chunks, { type: recorder.mimeType || this.mimeType || "video/webm" });
+        if (blob.size > 0) {
+          this.segments.push({
+            id: `${slot.id}-${generation}`,
+            slot: slot.id,
+            startMs: slot.startMs,
+            endMs,
+            durationMs: Math.max(0, endMs - slot.startMs),
+            blob,
+            mimeType: blob.type
+          });
+          const cutoff = nowMs() - this.options.maxAgeMs;
+          this.segments = this.segments.filter(s => s.endMs >= cutoff);
+          this.dispatchEvent(new CustomEvent("segment", {}));
+        }
+        slot.chunks = [];
+        slot.recorder = null;
+        if (this.running) {
+          slot.startTimer = setTimeout(() => this._startSlot(slot), 20);
+        }
+      }, { once: true });
+
+      recorder.start(500);
+      slot.stopTimer = setTimeout(() => {
+        if (recorder.state === "recording") {
+          slot.stopMs = nowMs();
+          recorder.stop();
+        }
+      }, this.options.segmentDurationMs);
+    }
+
+    getBufferStatus() {
+      const time = nowMs();
+      const activeAges = this.slots
+        .filter(s => s.recorder && s.recorder.state === "recording" && s.startMs != null)
+        .map(s => time - s.startMs);
+      const maxActiveMs = activeAges.length ? Math.max(...activeAges) : 0;
+      const totalElapsedMs = this.startedAt == null ? 0 : time - this.startedAt;
+      const coveredMs = Math.max(0, Math.min(this.options.clipDurationMs, Math.max(maxActiveMs, totalElapsedMs)));
+      const totalChunks = this.slots.reduce((acc, s) => acc + (s.chunks ? s.chunks.length : 0), 0);
+      return {
+        available: coveredMs >= 1000,
+        coveredMs,
+        requiredMs: this.options.clipDurationMs,
+        segmentCount: totalChunks
+      };
+    }
+
+    async captureClip(triggerAt = nowMs()) {
+      if (!this.running) throw new Error("Rolling buffer is not running.");
+      const activeSlots = this.slots
+        .filter(s => s.recorder && s.recorder.state === "recording" && s.chunks.length > 0)
+        .sort((a, b) => a.startMs - b.startMs);
+
+      if (activeSlots.length > 0) {
+        const bestSlot = activeSlots[0];
+        await new Promise(resolve => {
+          const rec = bestSlot.recorder;
+          if (!rec || rec.state !== "recording") { resolve(); return; }
+          const t = setTimeout(resolve, 600);
+          rec.addEventListener("stop", () => { clearTimeout(t); resolve(); }, { once: true });
+          clearTimeout(bestSlot.stopTimer);
+          bestSlot.stopMs = nowMs();
+          try { rec.stop(); } catch { resolve(); }
+        });
+
+        const latestSeg = this.segments[this.segments.length - 1];
+        if (latestSeg && latestSeg.blob && latestSeg.blob.size > 0) {
+          const clipDurMs = Math.min(this.options.clipDurationMs, Math.max(500, latestSeg.durationMs));
+          return {
+            blob: latestSeg.blob,
+            durationMs: clipDurMs,
+            triggerAt
+          };
+        }
+      }
+
+      if (this.segments.length > 0) {
+        const seg = this.segments[this.segments.length - 1];
+        return {
+          blob: seg.blob,
+          durationMs: Math.min(this.options.clipDurationMs, seg.durationMs),
+          triggerAt
+        };
+      }
+      throw new Error("Wait 1-2 seconds for video frames to buffer, then try again.");
+    }
+
+    stop() {
+      this.running = false;
+      for (const slot of this.slots) {
+        clearTimeout(slot.startTimer);
+        clearTimeout(slot.stopTimer);
+        if (slot.recorder && slot.recorder.state === "recording") {
+          try { slot.recorder.stop(); } catch {}
+        }
+      }
+    }
+  }
+
+  class TwitchIRC {
+    constructor(channel, { onClipCommand = () => {}, onMessage = () => {}, cooldownMs = 5000 } = {}) {
+      this.channel = (channel || "").trim().toLowerCase().replace(/^[@#]/, "");
+      this.onClipCommand = onClipCommand;
+      this.onMessage = onMessage;
+      this.cooldownMs = cooldownMs;
+      this.lastClipAt = 0;
+      this.socket = null;
+      this.manualClose = false;
+    }
+
+    connect() {
+      if (!this.channel || this.channel === "your_channel") {
+        this.channel = "riotgames";
+      }
+      this.manualClose = false;
+      this.socket = new WebSocket("wss://irc-ws.chat.twitch.tv:443");
+      this.socket.addEventListener("open", () => {
+        this.socket.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
+        this.socket.send("PASS SCHMOOPIIE");
+        this.socket.send(`NICK justinfan${Math.floor(Math.random() * 900000 + 100000)}`);
+        this.socket.send(`JOIN #${this.channel}`);
+      });
+      this.socket.addEventListener("message", event => this._handle(event.data));
+    }
+
+    _handle(raw) {
+      for (const line of String(raw).split(/\r\n/)) {
+        if (!line) continue;
+        if (line.startsWith("PING")) {
+          if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send("PONG :tmi.twitch.tv");
+          }
+          continue;
+        }
+        const match = line.match(/(?:^| ):(\w+)!.*? PRIVMSG #\S+ :(.*)$/);
+        if (!match) continue;
+        const message = { username: match[1], text: match[2], receivedAt: performance.now() };
+        this.onMessage(message);
+        if (message.text.trim().toLowerCase().includes("!clip")) {
+          const now = Date.now();
+          if (now - this.lastClipAt < this.cooldownMs) continue;
+          this.lastClipAt = now;
+          this.onClipCommand(message);
+        }
+      }
+    }
+
+    disconnect() {
+      this.manualClose = true;
+      if (this.socket) try { this.socket.close(); } catch {}
+      this.socket = null;
+    }
+  }
+
+  // UI Wiring
+  const $ = id => document.getElementById(id);
+  const source = $("source");
+  const canvas = $("output");
+  const status = $("status");
+  const startButton = $("start");
+  const clipButton = $("clip");
+  const captureButton = $("capture");
+  const stopButton = $("stop");
+  const connectButton = $("connect");
+  const disconnectButton = $("disconnect");
+
+  let displayStream = null;
+  let pipeline = null;
+  let recordingStream = null;
+  let buffer = null;
+  let pollTimer = null;
+  let irc = null;
+  let busy = false;
+  let sessionVault = [];
+  let recentHypeEvents = [];
+  let lastHypeClipAt = 0;
+
+  const ON_SCREEN_HOOKS = [
+    "WAIT FOR THIS CLUTCH 😱🔥",
+    "CHAT WENT CRAZY HERE 🚨",
+    "200 IQ STREAM MOMENT 🧠⚡",
+    "NO WAY THIS JUST HAPPENED 💀",
+    "CLIP OF THE YEAR?! 🏆🔥"
+  ];
+  let hookIdx = 0;
+
+  function setStatus(msg) { status.textContent = msg; }
+
+  // 1. OpenAI Codex Viral Hook & Hashtag Pack Generator
+  function renderCodexHooks(customClipper = null) {
+    const ch = ($("channel").value || "streamer").replace(/^[@#]/, "");
+    const clipper = customClipper || $("clipper").value || "@viewer";
+    const listEl = $("codexHooksList");
+    if (!listEl) return;
+
+    const packs = [
+      `POV: @${ch} pulls off the cleanest play on stream 😱🔥 (Clipped by ${clipper}) #twitch #twitchclips #gaming #shorts`,
+      `Chat couldn't believe what @${ch} just did 💀🎯 #streamer #viralclips #tiktokgaming #twitchcon`,
+      `Wait for the end... ${clipper} hit !clip at the exact right millisecond ⚡🏆 #live #highlights #reels`
+    ];
+
+    listEl.innerHTML = "";
+    packs.forEach(text => {
+      const row = document.createElement("div");
+      row.className = "codex-item";
+      const span = document.createElement("span");
+      span.textContent = text;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.style.padding = "4px 8px";
+      btn.style.fontSize = "12px";
+      btn.style.whiteSpace = "nowrap";
+      btn.textContent = "📋 Copy";
+      btn.addEventListener("click", () => {
+        navigator.clipboard?.writeText(text);
+        btn.textContent = "✅ Copied!";
+        setTimeout(() => { btn.textContent = "📋 Copy"; }, 1500);
+      });
+      row.appendChild(span);
+      row.appendChild(btn);
+      listEl.appendChild(row);
+    });
+  }
+
+  // 2. Chat Hype-Spike Velocity Detector
+  function recordChatHype(username, text) {
+    const now = Date.now();
+    const lower = (text || "").toLowerCase();
+    const isHypeWord = /pog|lul|kekw|omg|wtf|clip|insane|clutch|goat|holy|🔥|😱|💀/.test(lower);
+    const weight = isHypeWord ? 22 : 10;
+    recentHypeEvents.push({ time: now, weight, username });
+    recentHypeEvents = recentHypeEvents.filter(e => now - e.time < 7000);
+
+    const score = Math.min(100, recentHypeEvents.reduce((sum, e) => sum + e.weight, 0));
+    const fillEl = $("hypeBarFill");
+    const textEl = $("hypeScoreText");
+    if (fillEl) fillEl.style.width = `${score}%`;
+    if (textEl) textEl.textContent = `(${score}% Hype)`;
+
+    const autoToggle = $("autoHypeClipToggle");
+    if (score >= 100 && autoToggle && autoToggle.checked && (now - lastHypeClipAt > 8000)) {
+      lastHypeClipAt = now;
+      const hypeClipper = `@${username}_HypeSpike🔥`;
+      $("clipper").value = hypeClipper;
+      if (pipeline) pipeline.clipper = hypeClipper;
+      const chatStatusBox = $("chatStatus");
+      if (chatStatusBox) {
+        chatStatusBox.textContent = `🔥 HYPE SPIKE (100%)! Auto-clipping last 30s (Triggered by ${hypeClipper})…`;
+      }
+      exportAt(performance.now(), `${username}-hype`);
+    }
+  }
+
+  // Decay hype bar smoothly
+  setInterval(() => {
+    const now = Date.now();
+    recentHypeEvents = recentHypeEvents.filter(e => now - e.time < 7000);
+    const score = Math.min(100, recentHypeEvents.reduce((sum, e) => sum + e.weight, 0));
+    const fillEl = $("hypeBarFill");
+    const textEl = $("hypeScoreText");
+    if (fillEl) fillEl.style.width = `${score}%`;
+    if (textEl) textEl.textContent = `(${score}% Hype)`;
+  }, 1000);
+
+  // 3. Export Video + Cover PNG + Session Clip Vault
+  function showExportedVideo(blob, durationMs, username = "manual") {
+    const videoURL = URL.createObjectURL(blob);
+    const ts = new Date().toISOString().replaceAll(":", "-");
+    const fileName = `streamclip-9x16-${username}-${ts}.webm`;
+    const sizeMb = (blob.size / 1024 / 1024).toFixed(2);
+    const durSec = (durationMs / 1000).toFixed(1);
+    const clipperTag = $("clipper").value || `@${username}`;
+
+    // Capture 9:16 Cover Thumbnail PNG from Canvas
+    let thumbDataUrl = "";
+    try {
+      thumbDataUrl = canvas.toDataURL("image/png");
+    } catch {}
+
+    const linksRow = $("exportLinksRow");
+    if (linksRow) linksRow.style.display = "flex";
+
+    const link = $("download");
+    link.href = videoURL;
+    link.download = fileName;
+    link.textContent = `💾 Download 9:16 WebM (${sizeMb} MB)`;
+    link.hidden = false;
+
+    const thumbLink = $("downloadThumb");
+    if (thumbLink && thumbDataUrl) {
+      thumbLink.href = thumbDataUrl;
+      thumbLink.download = `streamclip-cover-${username}-${ts}.png`;
+      thumbLink.hidden = false;
+    }
+
+    const result = $("result");
+    result.src = videoURL;
+    result.hidden = false;
+    result.style.display = "block";
+    $("metadata").textContent =
+      `Trigger: ${new Date().toISOString()}\n` +
+      `Clipped by: ${clipperTag}\n` +
+      `Duration: ${durSec} seconds\n` +
+      `Output size: ${sizeMb} MB`;
+
+    // Add to Session Clip Vault
+    sessionVault.unshift({
+      id: sessionVault.length + 1,
+      clipper: clipperTag,
+      durSec,
+      sizeMb,
+      videoURL,
+      fileName,
+      thumbDataUrl,
+      timeLabel: new Date().toLocaleTimeString()
+    });
+
+    const vaultSec = $("vaultSection");
+    const vaultList = $("vaultList");
+    const vaultCount = $("vaultCount");
+    if (vaultSec && vaultList && vaultCount) {
+      vaultSec.style.display = "block";
+      vaultCount.textContent = String(sessionVault.length);
+      vaultList.innerHTML = "";
+      sessionVault.slice(0, 6).forEach(item => {
+        const div = document.createElement("div");
+        div.className = "vault-item";
+        div.innerHTML = `
+          <div>
+            <strong>Clip #${item.id}</strong> • <span style="color:#10b981;">${item.clipper}</span>
+            <div class="small">${item.durSec}s • ${item.sizeMb} MB • ${item.timeLabel}</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <a href="${item.videoURL}" download="${item.fileName}" style="background:#9147ff; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:600;">WebM</a>
+            ${item.thumbDataUrl ? `<a href="${item.thumbDataUrl}" download="cover-${item.id}.png" style="background:#262632; border:1px solid #494957; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px;">PNG</a>` : ""}
+          </div>
+        `;
+        vaultList.appendChild(div);
+      });
+    }
+
+    renderCodexHooks(clipperTag);
+  }
+
+  async function exportAt(triggerAt, username = "manual") {
+    if (!buffer || busy) return;
+    busy = true;
+    clipButton.disabled = true;
+    try {
+      setStatus("Finalizing 9:16 WebM clip from rolling buffer…");
+      const result = await buffer.captureClip(triggerAt);
+      showExportedVideo(result.blob, result.durationMs, username);
+      setStatus(`✅ Clip ready! ${(result.durationMs / 1000).toFixed(1)}s 9:16 WebM (${(result.blob.size / 1024 / 1024).toFixed(2)} MB). Saved to Session Clip Vault below!`);
+    } catch (err) {
+      console.error(err);
+      setStatus(`Clip error: ${err.message}`);
+    } finally {
+      busy = false;
+      clipButton.disabled = false;
+    }
+  }
+
+  function startRollingBufferNow() {
+    if (!recordingStream) {
+      setStatus("Click 'Capture screen / Twitch tab' first.");
+      return;
+    }
+    if (buffer) buffer.stop();
+    clearInterval(pollTimer);
+
+    buffer = new RollingClipBuffer(recordingStream);
+    const updateReadout = () => {
+      if (!buffer || busy) return;
+      const st = buffer.getBufferStatus();
+      const secs = Math.min(30, Math.round(st.coveredMs / 1000));
+      startButton.textContent = `🟢 Buffer Active (${secs}/30s)`;
+      startButton.style.background = "#059669";
+      startButton.style.borderColor = "#10b981";
+      setStatus(`🟢 Rolling buffer active — ${secs}/30 seconds buffered (${st.segmentCount} chunks retained). Ready to clip!`);
+    };
+
+    buffer.addEventListener("segment", updateReadout);
+    buffer.start();
+    startButton.disabled = false;
+    startButton.textContent = "🟢 Buffer Active (0/30s)";
+    startButton.style.background = "#059669";
+    startButton.style.borderColor = "#10b981";
+    clipButton.disabled = false;
+    setStatus("🟢 Rolling buffer started! Recording 9:16 vertical stream…");
+    pollTimer = setInterval(updateReadout, 1000);
+  }
+
+  captureButton.addEventListener("click", async () => {
+    try {
+      displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30, max: 30 } },
+        audio: true
+      });
+      source.srcObject = displayStream;
+      await source.play();
+
+      const chVal = ($("channel").value || "").trim();
+      const streamerName = chVal && chVal !== "YOUR_CHANNEL" ? `@${chVal.replace(/^[@#]/, "")}` : "@streamer";
+
+      pipeline = new CanvasPipeline({
+        video: source,
+        canvas,
+        streamer: streamerName,
+        clipper: $("clipper").value || "@viewer",
+        hookBanner: $("hookOverlayInput") ? $("hookOverlayInput").value : ""
+      });
+      pipeline.setLayout($("layout").value);
+      pipeline.start();
+
+      recordingStream = pipeline.createStream(displayStream);
+      startButton.disabled = false;
+      stopButton.disabled = false;
+      connectButton.disabled = false;
+
+      // Auto-start rolling buffer immediately upon capture
+      startRollingBufferNow();
+
+      displayStream.getVideoTracks()[0].addEventListener("ended", stopAll);
+    } catch (err) {
+      setStatus(`Capture was not started: ${err.message}`);
+    }
+  });
+
+  $("layout").addEventListener("change", ev => pipeline && pipeline.setLayout(ev.target.value));
+  $("clipper").addEventListener("input", ev => { if (pipeline) pipeline.clipper = ev.target.value || "@viewer"; });
+  $("channel").addEventListener("input", ev => {
+    if (pipeline) {
+      const v = ev.target.value.trim();
+      pipeline.streamer = v && v !== "YOUR_CHANNEL" ? `@${v.replace(/^[@#]/, "")}` : "@streamer";
+    }
+    renderCodexHooks();
+  });
+
+  if ($("hookOverlayInput")) {
+    $("hookOverlayInput").addEventListener("input", ev => {
+      if (pipeline) pipeline.hookBanner = ev.target.value;
+    });
+  }
+
+  if ($("cycleHookBtn")) {
+    $("cycleHookBtn").addEventListener("click", () => {
+      hookIdx = (hookIdx + 1) % ON_SCREEN_HOOKS.length;
+      const nextHook = ON_SCREEN_HOOKS[hookIdx];
+      if ($("hookOverlayInput")) $("hookOverlayInput").value = nextHook;
+      if (pipeline) pipeline.hookBanner = nextHook;
+    });
+  }
+
+  if ($("regenCodexBtn")) {
+    $("regenCodexBtn").addEventListener("click", () => renderCodexHooks());
+  }
+
+  if ($("simHypeBtn")) {
+    $("simHypeBtn").addEventListener("click", () => {
+      const chatStatusBox = $("chatStatus");
+      const sampleBursts = [
+        { u: "ClutchKing99", m: "POGGERS WHAT A PLAY 🔥🔥" },
+        { u: "ValorantPro_TV", m: "OMG NO WAY 😱" },
+        { u: "TwitchSniper42", m: "INSANE CLUTCH WTF!!" },
+        { u: "PixelQueen_", m: "CLIP THAT RIGHT NOW 🔥" },
+        { u: "xX_Shadow_Xx", m: "GOAT STREAMER POG!!" }
+      ];
+      sampleBursts.forEach((b, idx) => {
+        setTimeout(() => {
+          if (chatStatusBox) {
+            chatStatusBox.style.borderLeftColor = "#f59e0b";
+            chatStatusBox.textContent = `🔥 #${($("channel").value || "stream").replace(/^[@#]/, "")} — ${b.u}: ${b.m}`;
+          }
+          recordChatHype(b.u, b.m);
+        }, idx * 180);
+      });
+    });
+  }
+
+  startButton.addEventListener("click", startRollingBufferNow);
+  clipButton.addEventListener("click", () => exportAt(performance.now(), "manual"));
+
+  connectButton.addEventListener("click", () => {
+    try {
+      if (irc) irc.disconnect();
+      let chInput = ($("channel").value || "").trim();
+      if (!chInput || chInput.toLowerCase() === "your_channel") {
+        chInput = "riotgames";
+        $("channel").value = chInput;
+      }
+      const chatStatusBox = $("chatStatus");
+      irc = new TwitchIRC(chInput, {
+        onMessage: msg => {
+          if (chatStatusBox) {
+            chatStatusBox.textContent = `🟢 #${irc.channel} — ${msg.username}: ${msg.text}`;
+          }
+          recordChatHype(msg.username, msg.text);
+        },
+        onClipCommand: msg => {
+          const clipper = `@${msg.username}`;
+          $("clipper").value = clipper;
+          if (pipeline) pipeline.clipper = clipper;
+          if (chatStatusBox) {
+            chatStatusBox.textContent = `⚡ ${clipper} typed !clip in #${irc.channel}! Exporting clip…`;
+          }
+          setStatus(`${clipper} typed !clip in chat! Exporting clip…`);
+          exportAt(msg.receivedAt, msg.username);
+        }
+      });
+      irc.connect();
+      connectButton.disabled = false;
+      connectButton.textContent = `🟢 Chat Connected (#${irc.channel})`;
+      connectButton.style.background = "#059669";
+      connectButton.style.borderColor = "#10b981";
+      disconnectButton.disabled = false;
+      if (chatStatusBox) {
+        chatStatusBox.style.borderLeftColor = "#10b981";
+        chatStatusBox.textContent = `🟢 Connected to Twitch IRC (#${irc.channel}) — Listening for !clip & Hype Spikes…`;
+      }
+    } catch (err) {
+      setStatus(err.message);
+    }
+  });
+
+  disconnectButton.addEventListener("click", () => {
+    if (irc) irc.disconnect();
+    irc = null;
+    connectButton.disabled = false;
+    connectButton.textContent = "🟣 Connect anonymous chat";
+    connectButton.style.background = "";
+    connectButton.style.borderColor = "";
+    disconnectButton.disabled = true;
+    const chatStatusBox = $("chatStatus");
+    if (chatStatusBox) {
+      chatStatusBox.style.borderLeftColor = "#9147ff";
+      chatStatusBox.textContent = "💬 Twitch Chat: Disconnected.";
+    }
+  });
+
+  function stopAll() {
+    clearInterval(pollTimer);
+    if (buffer) buffer.stop();
+    if (pipeline) pipeline.stop();
+    if (displayStream) displayStream.getTracks().forEach(t => t.stop());
+    if (recordingStream) recordingStream.getTracks().forEach(t => t.stop());
+    buffer = null;
+    displayStream = null;
+    recordingStream = null;
+    startButton.disabled = true;
+    startButton.textContent = "Start rolling buffer";
+    startButton.style.background = "";
+    startButton.style.borderColor = "";
+    clipButton.disabled = true;
+    stopButton.disabled = true;
+    setStatus("Capture stopped.");
+  }
+
+  stopButton.addEventListener("click", stopAll);
+  renderCodexHooks();
+})();
+</script>
 </body>
 </html>
