@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "StreamClip AI - Twitch 9:16 Clipper",
-  "version": "1.0.0",
-  "description": "Zero-cost client-side 9:16 vertical short clipper for Twitch live streams with smart facecam crop and viral AI packaging.",
+  "name": "StreamClip AI - Live 9:16 Clipper",
+  "version": "1.1.0",
+  "description": "Zero-cost client-side 9:16 vertical short clipper for YouTube & Twitch streams with smart facecam crop and viral AI packaging.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -19,6 +19,7 @@
   },
   "permissions": [
     "activeTab",
+    "tabs",
     "tabCapture",
     "offscreen",
     "storage",
@@ -26,7 +27,9 @@
     "scripting"
   ],
   "host_permissions": [
-    "*://*.twitch.tv/*"
+    "*://*.twitch.tv/*",
+    "*://*.youtube.com/*",
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js",
@@ -34,7 +37,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.twitch.tv/*"],
+      "matches": ["*://*.twitch.tv/*", "*://*.youtube.com/*"],
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"

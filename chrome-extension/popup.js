@@ -2,6 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
   const activeChannelLabel = document.getElementById('activeChannelLabel');
+  const openStudioBtn = document.getElementById('openStudioBtn');
   const connectStreamBtn = document.getElementById('connectStreamBtn');
   const streamStatusBadge = document.getElementById('streamStatusBadge');
   const clipBtn = document.getElementById('clipBtn');
@@ -17,6 +18,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const copyTitleBtn = document.getElementById('copyTitleBtn');
   const titleSug = document.getElementById('titleSug');
   const vaultList = document.getElementById('vaultList');
+
+  // Open Full Screen Live Studio
+  openStudioBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('studio.html') });
+  });
 
   // Load stored state
   const state = await chrome.storage.local.get([
@@ -47,13 +53,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (state.isStreamConnected) {
     connectStreamBtn.innerHTML = '<span>✅ Live Tab Connected!</span>';
     connectStreamBtn.style.background = 'rgba(16, 185, 129, 0.4)';
-    streamStatusBadge.textContent = 'Mode: 🔴 Live Stream Active';
+    streamStatusBadge.textContent = 'Mode: 🔴 Live Video Stream Active';
     streamStatusBadge.style.color = '#10b981';
   }
 
   renderVault(state.vault || []);
 
-  // Connect active stream tab (Twitch or YouTube)
+  // Connect active stream tab (YouTube or Twitch)
   connectStreamBtn.addEventListener('click', async () => {
     connectStreamBtn.disabled = true;
     connectStreamBtn.innerHTML = '<span>🎥 Connecting Stream Tab...</span>';
@@ -61,15 +67,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab) {
-        alert('Please open a Twitch or YouTube stream tab first.');
+        alert('Please open your YouTube or Twitch video tab first.');
         resetConnectBtn();
         return;
       }
 
-      // Extract channel name from URL if on Twitch
+      // Detect title / channel name
       try {
         const url = new URL(tab.url);
-        if (url.hostname.includes('twitch.tv')) {
+        if (url.hostname.includes('youtube.com')) {
+          const rawTitle = (tab.title || 'YouTube').split('-')[0].trim();
+          const cleanName = rawTitle.replace(/[^a-zA-Z0-9_ ]/g, '').trim().substring(0, 16) || 'YouTube';
+          activeChannelLabel.textContent = `@${cleanName}`;
+          chrome.storage.local.set({ activeChannel: cleanName });
+        } else if (url.hostname.includes('twitch.tv')) {
           const parts = url.pathname.split('/').filter(Boolean);
           if (parts.length > 0) {
             const ch = parts[0];
@@ -90,12 +101,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (res && res.success) {
           connectStreamBtn.innerHTML = '<span>✅ Live Tab Connected!</span>';
           connectStreamBtn.style.background = 'rgba(16, 185, 129, 0.4)';
-          streamStatusBadge.textContent = 'Mode: 🔴 Live Stream Active';
+          streamStatusBadge.textContent = 'Mode: 🔴 Live Video Stream Active';
           streamStatusBadge.style.color = '#10b981';
           chrome.storage.local.set({ isStreamConnected: true });
         } else {
           resetConnectBtn();
-          alert('Could not capture tab audio/video: ' + (res?.error || 'Unknown error'));
+          alert('Could not capture stream: ' + (res?.error || 'Unknown error'));
         }
       });
     } catch (err) {

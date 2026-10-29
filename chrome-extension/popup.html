@@ -57,6 +57,34 @@
       font-size: 11px;
       color: var(--accent);
       font-weight: 600;
+      max-width: 140px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-studio {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(0, 245, 255, 0.15) 0%, rgba(145, 70, 255, 0.2) 100%);
+      border: 1px solid var(--accent);
+      color: #ffffff;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 8px rgba(0, 245, 255, 0.2);
+    }
+
+    .btn-studio:hover {
+      background: linear-gradient(135deg, rgba(0, 245, 255, 0.3) 0%, rgba(145, 70, 255, 0.35) 100%);
+      transform: translateY(-1px);
     }
 
     .btn-connect {
@@ -235,8 +263,12 @@
       <span>⚡ StreamClip AI</span>
       <span class="pill">PRO</span>
     </div>
-    <span id="activeChannelLabel" class="channel-tag">@riotgames</span>
+    <span id="activeChannelLabel" class="channel-tag">@live_stream</span>
   </div>
+
+  <button id="openStudioBtn" class="btn-studio">
+    <span>🖥️ Open Live Studio (Full Preview)</span>
+  </button>
 
   <button id="connectStreamBtn" class="btn-connect">
     <span>🎥 Connect Live Stream Tab</span>
@@ -274,7 +306,7 @@
         <input type="range" id="zoom" min="10" max="24" value="10">
         <span id="zoomVal">1.0x</span>
       </div>
-      <button id="fitTwitchBtn" class="btn-preset">📺 Fit Twitch Video Player</button>
+      <button id="fitTwitchBtn" class="btn-preset">📺 Fit YouTube / Twitch Tab</button>
     </div>
   </div>
 
@@ -282,7 +314,7 @@
   <div class="card">
     <input type="text" id="hookInput" value="WAIT TILL THE END 😱 #shorts">
     <div class="hook-suggestion">
-      <span id="titleSug">THE MOST UNREAL CLUTCH EVER 🔥 #twitch</span>
+      <span id="titleSug">THE MOST UNREAL CLUTCH EVER 🔥 #shorts</span>
       <button id="copyTitleBtn">Copy</button>
     </div>
   </div>
