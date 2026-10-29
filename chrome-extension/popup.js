@@ -2,6 +2,8 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
   const activeChannelLabel = document.getElementById('activeChannelLabel');
+  const connectStreamBtn = document.getElementById('connectStreamBtn');
+  const streamStatusBadge = document.getElementById('streamStatusBadge');
   const clipBtn = document.getElementById('clipBtn');
   const layoutSelect = document.getElementById('layoutSelect');
   const panX = document.getElementById('panX');
@@ -23,7 +25,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     'panX',
     'panY',
     'zoom',
-    'vault'
+    'vault',
+    'isStreamConnected'
   ]);
 
   if (state.activeChannel) activeChannelLabel.textContent = `@${state.activeChannel}`;
@@ -41,7 +44,71 @@ document.addEventListener('DOMContentLoaded', async () => {
     zoomVal.textContent = `${state.zoom.toFixed(1)}x`;
   }
 
+  if (state.isStreamConnected) {
+    connectStreamBtn.innerHTML = '<span>✅ Live Tab Connected!</span>';
+    connectStreamBtn.style.background = 'rgba(16, 185, 129, 0.4)';
+    streamStatusBadge.textContent = 'Mode: 🔴 Live Stream Active';
+    streamStatusBadge.style.color = '#10b981';
+  }
+
   renderVault(state.vault || []);
+
+  // Connect active stream tab (Twitch or YouTube)
+  connectStreamBtn.addEventListener('click', async () => {
+    connectStreamBtn.disabled = true;
+    connectStreamBtn.innerHTML = '<span>🎥 Connecting Stream Tab...</span>';
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab) {
+        alert('Please open a Twitch or YouTube stream tab first.');
+        resetConnectBtn();
+        return;
+      }
+
+      // Extract channel name from URL if on Twitch
+      try {
+        const url = new URL(tab.url);
+        if (url.hostname.includes('twitch.tv')) {
+          const parts = url.pathname.split('/').filter(Boolean);
+          if (parts.length > 0) {
+            const ch = parts[0];
+            activeChannelLabel.textContent = `@${ch}`;
+            chrome.storage.local.set({ activeChannel: ch });
+          }
+        }
+      } catch (e) {}
+
+      const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });
+
+      chrome.runtime.sendMessage({
+        target: 'offscreen',
+        action: 'CONNECT_STREAM',
+        streamId: streamId
+      }, (res) => {
+        connectStreamBtn.disabled = false;
+        if (res && res.success) {
+          connectStreamBtn.innerHTML = '<span>✅ Live Tab Connected!</span>';
+          connectStreamBtn.style.background = 'rgba(16, 185, 129, 0.4)';
+          streamStatusBadge.textContent = 'Mode: 🔴 Live Stream Active';
+          streamStatusBadge.style.color = '#10b981';
+          chrome.storage.local.set({ isStreamConnected: true });
+        } else {
+          resetConnectBtn();
+          alert('Could not capture tab audio/video: ' + (res?.error || 'Unknown error'));
+        }
+      });
+    } catch (err) {
+      resetConnectBtn();
+      alert('Tab capture permission error: ' + err.message);
+    }
+  });
+
+  function resetConnectBtn() {
+    connectStreamBtn.disabled = false;
+    connectStreamBtn.innerHTML = '<span>🎥 Connect Live Stream Tab</span>';
+    connectStreamBtn.style.background = 'rgba(16, 185, 129, 0.15)';
+  }
 
   function syncConfig() {
     const config = {

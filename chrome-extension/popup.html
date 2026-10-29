@@ -14,6 +14,7 @@
       --text: #efeff1;
       --muted: #adadb8;
       --accent: #00f5ff;
+      --emerald: #10b981;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -56,6 +57,35 @@
       font-size: 11px;
       color: var(--accent);
       font-weight: 600;
+    }
+
+    .btn-connect {
+      width: 100%;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--emerald);
+      color: #ecfdf5;
+      padding: 9px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-connect:hover {
+      background: rgba(16, 185, 129, 0.3);
+    }
+
+    .stream-status-badge {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 10px;
     }
 
     .btn-clip {
@@ -206,6 +236,13 @@
       <span class="pill">PRO</span>
     </div>
     <span id="activeChannelLabel" class="channel-tag">@riotgames</span>
+  </div>
+
+  <button id="connectStreamBtn" class="btn-connect">
+    <span>🎥 Connect Live Stream Tab</span>
+  </button>
+  <div id="streamStatusBadge" class="stream-status-badge">
+    Mode: 🎮 Synthetic Simulator (Click Connect for live video)
   </div>
 
   <button id="clipBtn" class="btn-clip">

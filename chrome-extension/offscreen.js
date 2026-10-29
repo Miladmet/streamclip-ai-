@@ -96,10 +96,30 @@ class OffscreenCanvasPipeline {
     this.hookBanner = 'WAIT TILL THE END 😱 #shorts';
     this.simTime = 0;
 
+    this.videoElement = null;
+    this.hasRealVideo = false;
+
     this.stream = this.canvas.captureStream(30);
     this.buffer = new RollingClipBuffer(this.stream);
 
     this.startLoop();
+  }
+
+  setVideoSource(videoElement, mediaStream) {
+    this.videoElement = videoElement;
+    this.hasRealVideo = true;
+
+    // Attach audio track to stream if available
+    if (mediaStream) {
+      const audioTracks = mediaStream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        try {
+          this.stream.addTrack(audioTracks[0]);
+        } catch (e) {
+          console.warn('Could not add audio track to canvas stream:', e);
+        }
+      }
+    }
   }
 
   startLoop() {
@@ -115,37 +135,85 @@ class OffscreenCanvasPipeline {
     const w = 720;
     const h = 1280;
 
-    // Background gradient / gameplay simulation
     ctx.fillStyle = '#0a0a14';
     ctx.fillRect(0, 0, w, h);
 
+    const isVideoReady = this.hasRealVideo && this.videoElement && this.videoElement.readyState >= 2;
+
     if (this.layout === 'blur') {
-      // Blurred backdrop
-      ctx.fillStyle = '#1e1136';
-      ctx.fillRect(0, 0, w, h);
+      if (isVideoReady) {
+        // Blurred backdrop
+        ctx.save();
+        ctx.filter = 'blur(22px) brightness(0.6)';
+        ctx.drawImage(this.videoElement, 0, 0, w, h);
+        ctx.restore();
 
-      // Centered 16:9 gameplay
-      const vh = Math.round(w * (9 / 16));
-      const vy = Math.round((h - vh) / 2);
-      this.drawSyntheticScene(0, vy, w, vh);
+        // Centered 16:9 gameplay
+        const vw = this.videoElement.videoWidth || 1280;
+        const vh = this.videoElement.videoHeight || 720;
+        const targetH = Math.round(w * (vh / vw));
+        const targetY = Math.round((h - targetH) / 2);
+        ctx.drawImage(this.videoElement, 0, 0, vw, vh, 0, targetY, w, targetH);
+      } else {
+        // Synthetic fallback
+        ctx.fillStyle = '#1e1136';
+        ctx.fillRect(0, 0, w, h);
+        const vh = Math.round(w * (9 / 16));
+        const vy = Math.round((h - vh) / 2);
+        this.drawSyntheticScene(0, vy, w, vh);
+      }
     } else if (this.layout === 'split-right' || this.layout === 'split-left') {
-      // Facecam Top 34%
       const camH = Math.round(h * 0.34);
-      this.drawSyntheticFacecam(0, 0, w, camH);
-
-      // Neon Twitch Divider
-      ctx.fillStyle = '#9146ff';
-      ctx.fillRect(0, camH - 2, w, 4);
-
-      // Gameplay Bottom 66%
       const gameH = h - camH;
-      this.drawSyntheticScene(0, camH, w, gameH);
+
+      if (isVideoReady) {
+        const vw = this.videoElement.videoWidth || 1280;
+        const vh = this.videoElement.videoHeight || 720;
+
+        // Facecam crop (Top 34% of 9:16 frame)
+        const isRightCam = this.layout === 'split-right';
+        const camW = Math.round(vw * 0.34);
+        const camCropH = Math.round(vh * 0.45);
+        const camX = isRightCam ? (vw - camW) : 0;
+        const camY = 0;
+
+        ctx.drawImage(this.videoElement, camX, camY, camW, camCropH, 0, 0, w, camH);
+
+        // Neon Divider
+        ctx.fillStyle = '#9146ff';
+        ctx.fillRect(0, camH - 2, w, 4);
+
+        // Gameplay crop with Pan & Zoom (Bottom 66%)
+        const cropW = (vw * 0.6) / this.zoom;
+        const cropH = (vh * 0.9) / this.zoom;
+        const cropX = Math.max(0, Math.min(vw - cropW, (vw - cropW) * (this.panX / 100)));
+        const cropY = Math.max(0, Math.min(vh - cropH, (vh - cropH) * (this.panY / 100)));
+
+        ctx.drawImage(this.videoElement, cropX, cropY, cropW, cropH, 0, camH, w, gameH);
+      } else {
+        // Synthetic fallback
+        this.drawSyntheticFacecam(0, 0, w, camH);
+        ctx.fillStyle = '#9146ff';
+        ctx.fillRect(0, camH - 2, w, 4);
+        this.drawSyntheticScene(0, camH, w, gameH);
+      }
     } else {
       // Center Action Crop
-      this.drawSyntheticScene(0, 0, w, h);
+      if (isVideoReady) {
+        const vw = this.videoElement.videoWidth || 1280;
+        const vh = this.videoElement.videoHeight || 720;
+        const cropW = (vh * (9 / 16)) / this.zoom;
+        const cropH = vh / this.zoom;
+        const cropX = Math.max(0, Math.min(vw - cropW, (vw - cropW) * (this.panX / 100)));
+        const cropY = Math.max(0, Math.min(vh - cropH, (vh - cropH) * (this.panY / 100)));
+
+        ctx.drawImage(this.videoElement, cropX, cropY, cropW, cropH, 0, 0, w, h);
+      } else {
+        this.drawSyntheticScene(0, 0, w, h);
+      }
     }
 
-    // Overlays: Live Pill & Streamer Tag
+    // Overlays: Live Pill, Streamer Tag, Hook Banner
     this.drawOverlays();
   }
 
@@ -156,7 +224,6 @@ class OffscreenCanvasPipeline {
     ctx.rect(x, y, w, h);
     ctx.clip();
 
-    // Animated grid & action elements
     ctx.fillStyle = '#111026';
     ctx.fillRect(x, y, w, h);
 
@@ -172,7 +239,6 @@ class OffscreenCanvasPipeline {
       ctx.stroke();
     }
 
-    // Moving target/crosshair
     const targetX = cx + Math.sin(this.simTime * 2) * 80;
     const targetY = cy + Math.cos(this.simTime * 2) * 50;
 
@@ -195,7 +261,6 @@ class OffscreenCanvasPipeline {
     ctx.fillStyle = '#18142a';
     ctx.fillRect(x, y, w, h);
 
-    // Streamer avatar circle
     const cx = w / 2;
     const cy = h / 2;
     ctx.fillStyle = '#9146ff';
@@ -282,6 +347,36 @@ window.addEventListener('DOMContentLoaded', () => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.target !== 'offscreen') return;
+
+  if (request.action === 'CONNECT_STREAM') {
+    navigator.mediaDevices.getUserMedia({
+      audio: {
+        mandatory: {
+          chromeMediaSource: 'tab',
+          chromeMediaSourceId: request.streamId
+        }
+      },
+      video: {
+        mandatory: {
+          chromeMediaSource: 'tab',
+          chromeMediaSourceId: request.streamId,
+          maxWidth: 1920,
+          maxHeight: 1080
+        }
+      }
+    }).then((mediaStream) => {
+      const video = document.getElementById('offscreenVideo');
+      video.srcObject = mediaStream;
+      video.play().then(() => {
+        if (pipeline) pipeline.setVideoSource(video, mediaStream);
+        sendResponse({ success: true });
+      });
+    }).catch((err) => {
+      console.error('Failed to get user media from tab stream:', err);
+      sendResponse({ success: false, error: err.message });
+    });
+    return true; // async
+  }
 
   if (request.action === 'SET_CONFIG') {
     if (pipeline) {
