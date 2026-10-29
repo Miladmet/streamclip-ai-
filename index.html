@@ -3,57 +3,199 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StreamClip AI — Milestone 1</title>
+  <title>StreamClip AI — Codex x TwitchCon Edition</title>
   <style>
-    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
-    body { margin: 0; background: #101014; color: #f5f5f7; }
-    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
-    h1 { margin: 0 0 8px; } p { color: #b8b8c2; line-height: 1.5; }
-    .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr); gap: 20px; }
-    .panel { background: #1a1a22; border: 1px solid #30303b; border-radius: 14px; padding: 16px; }
-    video { width: 100%; background: #050507; border-radius: 10px; max-height: 520px; }
-    canvas { width: min(100%, 360px); aspect-ratio: 9 / 16; background: #050507; border: 1px solid #444; border-radius: 10px; }
-    button, select, input { border: 1px solid #494957; background: #262632; color: white; padding: 10px 12px; border-radius: 8px; font: inherit; }
-    button { cursor: pointer; } button.primary { background: #9147ff; border-color: #9147ff; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-    .status { padding: 10px; border-radius: 8px; background: #252530; color: #d7d7df; white-space: pre-wrap; }
-    .small { font-size: 13px; color: #9999a8; }
-    label { display: block; margin: 10px 0 6px; color: #c9c9d2; font-size: 13px; }
-    .hype-box { background: #15151c; border: 1px solid #30303b; border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+    :root {
+      color-scheme: dark;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      --purple: #9147ff;
+      --purple-glow: rgba(145, 71, 255, 0.35);
+      --emerald: #10b981;
+      --bg-dark: #0b0b0f;
+      --bg-panel: #14141c;
+      --border: #282836;
+    }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 15% 0%, rgba(145, 71, 255, 0.14), transparent 45%),
+                  radial-gradient(circle at 85% 10%, rgba(16, 185, 129, 0.08), transparent 40%),
+                  var(--bg-dark);
+      color: #f5f5f7;
+      min-height: 100vh;
+    }
+    .topbar {
+      background: rgba(20, 20, 28, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .topbar-inner {
+      max-width: 1160px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #9147ff, #6d28d9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 18px var(--purple-glow);
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+    h2 { margin: 0 0 10px; font-size: 16px; font-weight: 700; color: #ececf4; display: flex; align-items: center; justify-content: space-between; }
+    p { color: #a9a9b8; line-height: 1.5; margin: 4px 0 0; font-size: 13.5px; }
+    main { max-width: 1160px; margin: 0 auto; padding: 22px 20px 60px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, .95fr); gap: 22px; align-items: start; }
+    .panel {
+      background: linear-gradient(180deg, rgba(26, 26, 36, 0.95), rgba(18, 18, 25, 0.98));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+    video { width: 100%; background: #050507; border-radius: 12px; max-height: 440px; border: 1px solid #262634; }
+    .phone-stage {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px 0;
+      background: radial-gradient(circle, rgba(145, 71, 255, 0.12), transparent 65%);
+      border-radius: 14px;
+      border: 1px solid #222230;
+      margin-bottom: 10px;
+    }
+    canvas {
+      width: min(100%, 310px);
+      aspect-ratio: 9 / 16;
+      background: #050507;
+      border: 6px solid #282838;
+      border-radius: 26px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.75), 0 0 22px rgba(145, 71, 255, 0.22);
+    }
+    button, select, input[type="text"], input:not([type]) {
+      border: 1px solid #3f3f52;
+      background: #20202c;
+      color: white;
+      padding: 9px 13px;
+      border-radius: 9px;
+      font: inherit;
+      font-size: 13.5px;
+      transition: all 0.15s ease;
+    }
+    button:hover:not(:disabled) { border-color: #9147ff; transform: translateY(-1px); }
+    button { cursor: pointer; font-weight: 600; }
+    button.primary { background: linear-gradient(135deg, #9147ff, #7c3aed); border-color: #9147ff; box-shadow: 0 4px 14px rgba(145, 71, 255, 0.3); }
+    button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .crop-sliders-box {
+      background: #14141d;
+      border: 1px solid #2a2a38;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 10px 0;
+    }
+    .slider-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 44px;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: #c4c4d4;
+      margin: 5px 0;
+    }
+    input[type="range"] { width: 100%; accent-color: #9147ff; cursor: pointer; }
+    .status { padding: 10px 12px; border-radius: 9px; background: #1d1d28; border: 1px solid #2e2e3e; color: #e2e2ec; white-space: pre-wrap; font-size: 13px; }
+    .small { font-size: 12.5px; color: #9494a6; }
+    label { display: block; margin: 10px 0 5px; color: #c9c9d6; font-size: 12.5px; font-weight: 600; }
+    .hype-box { background: #14141d; border: 1px solid #2d2d3c; border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
     .hype-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px; }
-    .hype-bar-bg { width: 100%; height: 8px; background: #252530; border-radius: 99px; overflow: hidden; }
+    .hype-bar-bg { width: 100%; height: 8px; background: #252532; border-radius: 99px; overflow: hidden; }
     .hype-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #9147ff, #f59e0b, #10b981); transition: width 0.25s ease; }
-    .codex-box { background: rgba(16, 185, 129, 0.07); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px; margin: 12px 0; }
-    .codex-item { background: #14141b; border: 1px solid #2d2d3a; border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .codex-box { background: linear-gradient(180deg, rgba(16, 185, 129, 0.09), rgba(16, 185, 129, 0.03)); border: 1px solid rgba(16, 185, 129, 0.32); border-radius: 11px; padding: 12px; margin: 12px 0; }
+    .codex-item { background: #13131b; border: 1px solid #292938; border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 12.5px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .vault-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-    .vault-item { background: #14141b; border: 1px solid #2d2d3a; border-radius: 8px; padding: 10px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background: rgba(145, 71, 255, 0.2); color: #c4b5fd; border: 1px solid rgba(145, 71, 255, 0.4); }
+    .vault-item { background: #13131b; border: 1px solid #292938; border-radius: 8px; padding: 10px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; background: rgba(145, 71, 255, 0.2); color: #d8b4fe; border: 1px solid rgba(145, 71, 255, 0.45); }
+    .badge-emerald { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.4); }
     @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-icon">🟣</div>
+      <div>
+        <h1>StreamClip AI <span class="badge">Codex x TwitchCon Edition</span></h1>
+        <p>Rolling 30s 9:16 vertical buffer • Real-time facecam split crop • Twitch IRC Hype-Spike auto-clipper • OpenAI Codex hooks</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span class="badge badge-emerald">⚡ Zero Cloud GPU</span>
+      <span class="badge">100% Client-Side WebM</span>
+    </div>
+  </div>
+</header>
 <main>
-  <h1>StreamClip AI <span class="badge">Codex x TwitchCon Edition</span></h1>
-  <p>Rolling 30-second 9:16 vertical buffer, real-time facecam split crop, Twitch IRC Hype-Spike auto-clipper, and OpenAI Codex viral packaging.</p>
-
   <div class="grid">
     <section class="panel">
-      <h2>Source video</h2>
+      <h2><span>🎥 Source Video Monitor</span> <span class="small">16:9 Input</span></h2>
       <video id="source" autoplay muted playsinline></video>
       <div class="controls">
-        <button id="capture" class="primary">Capture screen / Twitch tab</button>
-        <button id="stop" disabled>Stop capture</button>
+        <button id="capture" class="primary">🖥️ Capture screen / Twitch tab</button>
+        <button id="stop" disabled>⏹️ Stop capture</button>
       </div>
-      <p class="small">Choose a browser tab containing the stream and enable tab audio in the browser's sharing dialog. This demo does not bypass Twitch player restrictions.</p>
-      <h2>Vertical preview (9:16)</h2>
-      <canvas id="output" width="720" height="1280"></canvas>
+      <p class="small" style="margin-bottom:14px;">Select a browser tab playing Twitch or YouTube and check <strong>"Also share tab audio"</strong>.</p>
+
+      <h2><span>📱 Vertical Preview (9:16 Shorts / TikTok)</span> <span class="badge">720 × 1280</span></h2>
+      <div class="phone-stage">
+        <canvas id="output" width="720" height="1280"></canvas>
+      </div>
+
+      <!-- Smart Framing & Pan/Zoom Controls to Eliminate Webpage Margins -->
+      <div class="crop-sliders-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+          <strong style="font-size:12.5px; color:#e2e2f0;">🎯 Smart Video Framing (Eliminate White Margins)</strong>
+          <div style="display:flex; gap:6px;">
+            <button id="presetWebPlayerBtn" type="button" style="padding:4px 8px; font-size:11.5px; border-color:#9147ff; color:#d8b4fe;">📺 Fit YouTube / Twitch Tab</button>
+            <button id="presetResetCropBtn" type="button" style="padding:4px 8px; font-size:11.5px;">🔄 Reset Center</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <span>⬅️ Pan Left/Right</span>
+          <input type="range" id="panXSlider" min="0" max="100" value="50" />
+          <span id="panXVal">50%</span>
+        </div>
+        <div class="slider-row">
+          <span>⬆️ Pan Up/Down</span>
+          <input type="range" id="panYSlider" min="0" max="100" value="50" />
+          <span id="panYVal">50%</span>
+        </div>
+        <div class="slider-row">
+          <span>🔍 Crop Zoom</span>
+          <input type="range" id="zoomSlider" min="100" max="240" value="100" />
+          <span id="zoomVal">1.0x</span>
+        </div>
+      </div>
+
       <div class="controls">
-        <select id="layout">
-          <option value="center">Center crop (Crosshair / Action)</option>
-          <option value="split">Split: Top-Right Facecam + Gameplay</option>
-          <option value="split_left">Split: Top-Left Facecam + Gameplay</option>
-          <option value="blur">Pillarbox Blur background</option>
+        <select id="layout" style="flex:1;">
+          <option value="center">Layout: Center Crop (Crosshair / Action)</option>
+          <option value="split">Layout: Split Top-Right Facecam + Gameplay</option>
+          <option value="split_left">Layout: Split Top-Left Facecam + Gameplay</option>
+          <option value="blur">Layout: Pillarbox Blur Background</option>
         </select>
       </div>
       <label for="hookOverlayInput">On-Video Viral Hook Banner (Baked into 9:16 video)</label>
@@ -142,7 +284,7 @@
   }
 
   class CanvasPipeline {
-    constructor({ video, canvas, layout = "center", streamer = "@streamer", clipper = "@viewer", hookBanner = "", fps = 30 }) {
+    constructor({ video, canvas, layout = "center", streamer = "@streamer", clipper = "@viewer", hookBanner = "", panX = 0.5, panY = 0.5, zoom = 1.0, fps = 30 }) {
       this.video = video;
       this.canvas = canvas;
       this.ctx = canvas.getContext("2d", { alpha: false });
@@ -150,6 +292,9 @@
       this.streamer = streamer;
       this.clipper = clipper;
       this.hookBanner = hookBanner;
+      this.panX = panX;
+      this.panY = panY;
+      this.zoom = zoom;
       this.fps = fps;
       this.raf = null;
       this.running = false;
@@ -166,20 +311,31 @@
       const v = this.video;
       if (!v || v.readyState < 2 || !v.videoWidth || !v.videoHeight) return;
       const c = this.ctx, W = 720, H = 1280;
+      const z = Math.max(1.0, this.zoom || 1.0);
+      const px = Math.max(0, Math.min(1, this.panX ?? 0.5));
+      const py = Math.max(0, Math.min(1, this.panY ?? 0.5));
 
       if (this.layout === "center") {
         const ratio = 9 / 16;
-        const cropW = Math.min(v.videoWidth, v.videoHeight * ratio);
-        const cropH = cropW / ratio;
-        c.drawImage(v, (v.videoWidth - cropW) / 2, (v.videoHeight - cropH) / 2, cropW, cropH, 0, 0, W, H);
+        const baseW = Math.min(v.videoWidth, v.videoHeight * ratio);
+        const baseH = baseW / ratio;
+        const cropW = baseW / z;
+        const cropH = baseH / z;
+        const sx = Math.max(0, Math.min(v.videoWidth - cropW, (v.videoWidth - cropW) * px));
+        const sy = Math.max(0, Math.min(v.videoHeight - cropH, (v.videoHeight - cropH) * py));
+        c.drawImage(v, sx, sy, cropW, cropH, 0, 0, W, H);
       } else if (this.layout === "blur") {
+        const subW = v.videoWidth / z;
+        const subH = v.videoHeight / z;
+        const sx = Math.max(0, Math.min(v.videoWidth - subW, (v.videoWidth - subW) * px));
+        const sy = Math.max(0, Math.min(v.videoHeight - subH, (v.videoHeight - subH) * py));
         c.save();
         c.filter = "blur(32px) brightness(.42)";
-        c.drawImage(v, -70, -70, W + 140, H + 140);
+        c.drawImage(v, sx, sy, subW, subH, -70, -70, W + 140, H + 140);
         c.restore();
-        const scale = Math.min(W / v.videoWidth, H / v.videoHeight);
-        const w = v.videoWidth * scale, h = v.videoHeight * scale;
-        c.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
+        const scale = Math.min(W / subW, H / subH);
+        const w = subW * scale, h = subH * scale;
+        c.drawImage(v, sx, sy, subW, subH, (W - w) / 2, (H - h) / 2, w, h);
       } else {
         // Real Split-Screen Facecam (Top 410px) + Center Gameplay (Bottom 870px)
         const topH = 410;
@@ -194,9 +350,13 @@
         // Top: Zoomed Streamer Facecam Region
         c.drawImage(v, camX, camY, camW, camH, 0, 0, W, topH);
 
-        // Bottom: Center Action Gameplay
-        const cropW = Math.min(v.videoWidth, v.videoHeight * (W / botH));
-        c.drawImage(v, (v.videoWidth - cropW) / 2, 0, cropW, v.videoHeight, 0, topH, W, botH);
+        // Bottom: Action Gameplay (respects Pan/Zoom sliders!)
+        const baseW = Math.min(v.videoWidth, v.videoHeight * (W / botH));
+        const cropW = baseW / z;
+        const cropH = v.videoHeight / z;
+        const sx = Math.max(0, Math.min(v.videoWidth - cropW, (v.videoWidth - cropW) * px));
+        const sy = Math.max(0, Math.min(v.videoHeight - cropH, (v.videoHeight - cropH) * py));
+        c.drawImage(v, sx, sy, cropW, cropH, 0, topH, W, botH);
 
         // Glowing Twitch Purple Split Divider
         c.save();
@@ -760,7 +920,10 @@
         canvas,
         streamer: streamerName,
         clipper: $("clipper").value || "@viewer",
-        hookBanner: $("hookOverlayInput") ? $("hookOverlayInput").value : ""
+        hookBanner: $("hookOverlayInput") ? $("hookOverlayInput").value : "",
+        panX: $("panXSlider") ? Number($("panXSlider").value) / 100 : 0.5,
+        panY: $("panYSlider") ? Number($("panYSlider").value) / 100 : 0.5,
+        zoom: $("zoomSlider") ? Number($("zoomSlider").value) / 100 : 1.0
       });
       pipeline.setLayout($("layout").value);
       pipeline.start();
@@ -780,6 +943,48 @@
   });
 
   $("layout").addEventListener("change", ev => pipeline && pipeline.setLayout(ev.target.value));
+
+  function syncCropSliders(pxPct, pyPct, zoomPct) {
+    if ($("panXSlider")) $("panXSlider").value = String(pxPct);
+    if ($("panYSlider")) $("panYSlider").value = String(pyPct);
+    if ($("zoomSlider")) $("zoomSlider").value = String(zoomPct);
+    if ($("panXVal")) $("panXVal").textContent = `${pxPct}%`;
+    if ($("panYVal")) $("panYVal").textContent = `${pyPct}%`;
+    if ($("zoomVal")) $("zoomVal").textContent = `${(zoomPct / 100).toFixed(1)}x`;
+    if (pipeline) {
+      pipeline.panX = pxPct / 100;
+      pipeline.panY = pyPct / 100;
+      pipeline.zoom = zoomPct / 100;
+    }
+  }
+
+  if ($("panXSlider")) {
+    $("panXSlider").addEventListener("input", ev => {
+      const v = Number(ev.target.value);
+      if ($("panXVal")) $("panXVal").textContent = `${v}%`;
+      if (pipeline) pipeline.panX = v / 100;
+    });
+  }
+  if ($("panYSlider")) {
+    $("panYSlider").addEventListener("input", ev => {
+      const v = Number(ev.target.value);
+      if ($("panYVal")) $("panYVal").textContent = `${v}%`;
+      if (pipeline) pipeline.panY = v / 100;
+    });
+  }
+  if ($("zoomSlider")) {
+    $("zoomSlider").addEventListener("input", ev => {
+      const v = Number(ev.target.value);
+      if ($("zoomVal")) $("zoomVal").textContent = `${(v / 100).toFixed(1)}x`;
+      if (pipeline) pipeline.zoom = v / 100;
+    });
+  }
+  if ($("presetWebPlayerBtn")) {
+    $("presetWebPlayerBtn").addEventListener("click", () => syncCropSliders(28, 34, 150));
+  }
+  if ($("presetResetCropBtn")) {
+    $("presetResetCropBtn").addEventListener("click", () => syncCropSliders(50, 50, 100));
+  }
   $("clipper").addEventListener("input", ev => { if (pipeline) pipeline.clipper = ev.target.value || "@viewer"; });
   $("channel").addEventListener("input", ev => {
     if (pipeline) {
