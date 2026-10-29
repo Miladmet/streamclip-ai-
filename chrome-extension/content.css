@@ -1,0 +1,148 @@
+/* StreamClip AI Twitch Overlay Styles */
+#streamclip-ai-floating-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  user-select: none;
+}
+
+.scai-widget-card {
+  background: rgba(18, 16, 28, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(145, 71, 255, 0.45);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 18px rgba(145, 71, 255, 0.25);
+  border-radius: 14px;
+  padding: 12px 16px;
+  color: #f1f1f3;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scai-widget-card:hover {
+  border-color: rgba(145, 71, 255, 0.8);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.75), 0 0 24px rgba(145, 71, 255, 0.4);
+}
+
+.scai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scai-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: #fff;
+}
+
+.scai-badge {
+  background: #9146ff;
+  color: #fff;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.scai-channel {
+  font-size: 11px;
+  color: #adadb8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.scai-clip-btn {
+  background: linear-gradient(135deg, #9146ff 0%, #772ce8 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(145, 70, 255, 0.4);
+  transition: all 0.15s ease;
+}
+
+.scai-clip-btn:hover {
+  background: linear-gradient(135deg, #a970ff 0%, #9146ff 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(145, 70, 255, 0.55);
+}
+
+.scai-clip-btn:active {
+  transform: translateY(1px);
+}
+
+.scai-hype-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scai-hype-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  color: #efeff1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.scai-hype-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.scai-hype-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #9146ff, #ff4655, #ffb800);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.scai-toast {
+  position: fixed;
+  bottom: 120px;
+  right: 24px;
+  background: rgba(15, 14, 23, 0.95);
+  border: 1px solid #10b981;
+  color: #ecfdf5;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 10000000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: scai-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scai-slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
