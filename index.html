@@ -123,10 +123,10 @@
 (() => {
   const DEFAULTS = {
     clipDurationMs: 30000,
-    segmentDurationMs: 41000,
-    staggerMs: 10000,
-    maxAgeMs: 75000,
-    videoBitsPerSecond: 3500000,
+    segmentDurationMs: 32000,
+    staggerMs: 15000,
+    maxAgeMs: 65000,
+    videoBitsPerSecond: 2500000,
     audioBitsPerSecond: 128000
   };
 
@@ -254,9 +254,20 @@
     start() {
       if (this.running) return;
       this.running = true;
+      let lastDraw = 0;
+      const drawStep = () => {
+        if (!this.running) return;
+        const now = performance.now();
+        if (now - lastDraw >= 28) {
+          lastDraw = now;
+          this.renderFrame();
+        }
+      };
+      // Keep rendering even when the StreamClip AI tab is in the background!
+      this.bgTimer = setInterval(drawStep, 33);
       const tick = () => {
         if (!this.running) return;
-        this.renderFrame();
+        drawStep();
         this.raf = requestAnimationFrame(tick);
       };
       tick();
@@ -265,6 +276,7 @@
     stop() {
       this.running = false;
       if (this.raf != null) cancelAnimationFrame(this.raf);
+      if (this.bgTimer != null) clearInterval(this.bgTimer);
     }
 
     createStream(audioSourceStream) {
@@ -293,16 +305,9 @@
       if (this.running) return;
       this.running = true;
       this.startedAt = nowMs();
-      // 4 staggered slots (0s, 10s, 20s, 30s) each recording for 41s guarantees
-      // that at EVERY timestamp t >= 30s, at least one active slot holds >= 30s of continuous video!
-      this.slots = [this._makeSlot("A"), this._makeSlot("B"), this._makeSlot("C"), this._makeSlot("D")];
-      this.slots.forEach((slot, idx) => {
-        if (idx === 0) {
-          this._startSlot(slot);
-        } else {
-          slot.startTimer = setTimeout(() => this._startSlot(slot), idx * this.options.staggerMs);
-        }
-      });
+      this.slots = [this._makeSlot("A"), this._makeSlot("B")];
+      this._startSlot(this.slots[0]);
+      this.slots[1].startTimer = setTimeout(() => this._startSlot(this.slots[1]), 15000);
     }
 
     _makeSlot(id) {
@@ -613,12 +618,7 @@
     const durSec = (durationMs / 1000).toFixed(1);
     const clipperTag = $("clipper").value || `@${username}`;
 
-    // Capture 9:16 Cover Thumbnail PNG from Canvas
-    let thumbDataUrl = "";
-    try {
-      thumbDataUrl = canvas.toDataURL("image/png");
-    } catch {}
-
+    // Capture 9:16 Cover Thumbnail asynchronously via toBlob so UI never freezes
     const linksRow = $("exportLinksRow");
     if (linksRow) linksRow.style.display = "flex";
 
@@ -627,13 +627,6 @@
     link.download = fileName;
     link.textContent = `💾 Download 9:16 WebM (${sizeMb} MB)`;
     link.hidden = false;
-
-    const thumbLink = $("downloadThumb");
-    if (thumbLink && thumbDataUrl) {
-      thumbLink.href = thumbDataUrl;
-      thumbLink.download = `streamclip-cover-${username}-${ts}.png`;
-      thumbLink.hidden = false;
-    }
 
     const result = $("result");
     result.src = videoURL;
@@ -645,40 +638,58 @@
       `Duration: ${durSec} seconds\n` +
       `Output size: ${sizeMb} MB`;
 
-    // Add to Session Clip Vault
-    sessionVault.unshift({
+    const vaultEntry = {
       id: sessionVault.length + 1,
       clipper: clipperTag,
       durSec,
       sizeMb,
       videoURL,
       fileName,
-      thumbDataUrl,
+      thumbDataUrl: "",
       timeLabel: new Date().toLocaleTimeString()
-    });
+    };
+    sessionVault.unshift(vaultEntry);
 
-    const vaultSec = $("vaultSection");
-    const vaultList = $("vaultList");
-    const vaultCount = $("vaultCount");
-    if (vaultSec && vaultList && vaultCount) {
-      vaultSec.style.display = "block";
-      vaultCount.textContent = String(sessionVault.length);
-      vaultList.innerHTML = "";
-      sessionVault.slice(0, 6).forEach(item => {
-        const div = document.createElement("div");
-        div.className = "vault-item";
-        div.innerHTML = `
-          <div>
-            <strong>Clip #${item.id}</strong> • <span style="color:#10b981;">${item.clipper}</span>
-            <div class="small">${item.durSec}s • ${item.sizeMb} MB • ${item.timeLabel}</div>
-          </div>
-          <div style="display:flex; gap:6px;">
-            <a href="${item.videoURL}" download="${item.fileName}" style="background:#9147ff; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:600;">WebM</a>
-            ${item.thumbDataUrl ? `<a href="${item.thumbDataUrl}" download="cover-${item.id}.png" style="background:#262632; border:1px solid #494957; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px;">PNG</a>` : ""}
-          </div>
-        `;
-        vaultList.appendChild(div);
-      });
+    const renderVault = () => {
+      const vaultSec = $("vaultSection");
+      const vaultList = $("vaultList");
+      const vaultCount = $("vaultCount");
+      if (vaultSec && vaultList && vaultCount) {
+        vaultSec.style.display = "block";
+        vaultCount.textContent = String(sessionVault.length);
+        vaultList.innerHTML = "";
+        sessionVault.slice(0, 6).forEach(item => {
+          const div = document.createElement("div");
+          div.className = "vault-item";
+          div.innerHTML = `
+            <div>
+              <strong>Clip #${item.id}</strong> • <span style="color:#10b981;">${item.clipper}</span>
+              <div class="small">${item.durSec}s • ${item.sizeMb} MB • ${item.timeLabel}</div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <a href="${item.videoURL}" download="${item.fileName}" style="background:#9147ff; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:600;">WebM</a>
+              ${item.thumbDataUrl ? `<a href="${item.thumbDataUrl}" download="cover-${item.id}.jpg" style="background:#262632; border:1px solid #494957; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px;">Cover</a>` : ""}
+            </div>
+          `;
+          vaultList.appendChild(div);
+        });
+      }
+    };
+    renderVault();
+
+    if (canvas.toBlob) {
+      canvas.toBlob(jpgBlob => {
+        if (!jpgBlob) return;
+        const thumbUrl = URL.createObjectURL(jpgBlob);
+        vaultEntry.thumbDataUrl = thumbUrl;
+        const thumbLink = $("downloadThumb");
+        if (thumbLink) {
+          thumbLink.href = thumbUrl;
+          thumbLink.download = `streamclip-cover-${username}-${ts}.jpg`;
+          thumbLink.hidden = false;
+        }
+        renderVault();
+      }, "image/jpeg", 0.85);
     }
 
     renderCodexHooks(clipperTag);
