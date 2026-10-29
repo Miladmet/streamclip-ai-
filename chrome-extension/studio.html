@@ -903,40 +903,75 @@
     pollTimer = setInterval(updateReadout, 1000);
   }
 
+  async function attachAndStartStream(stream) {
+    displayStream = stream;
+    source.srcObject = displayStream;
+    await source.play();
+
+    const chVal = ($("channel").value || "").trim();
+    const streamerName = chVal && chVal !== "YOUR_CHANNEL" ? `@${chVal.replace(/^[@#]/, "")}` : "@streamer";
+
+    pipeline = new CanvasPipeline({
+      video: source,
+      canvas,
+      streamer: streamerName,
+      clipper: $("clipper").value || "@viewer",
+      hookBanner: $("hookOverlayInput") ? $("hookOverlayInput").value : "",
+      panX: $("panXSlider") ? Number($("panXSlider").value) / 100 : 0.5,
+      panY: $("panYSlider") ? Number($("panYSlider").value) / 100 : 0.5,
+      zoom: $("zoomSlider") ? Number($("zoomSlider").value) / 100 : 1.0
+    });
+    pipeline.setLayout($("layout").value);
+    pipeline.start();
+
+    recordingStream = pipeline.createStream(displayStream);
+    startButton.disabled = false;
+    stopButton.disabled = false;
+    connectButton.disabled = false;
+
+    // Auto-start rolling buffer immediately upon capture
+    startRollingBufferNow();
+
+    displayStream.getVideoTracks()[0].addEventListener("ended", stopAll);
+  }
+
   captureButton.addEventListener("click", async () => {
     try {
-      displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 30, max: 30 } },
-        audio: true
-      });
-      source.srcObject = displayStream;
-      await source.play();
-
-      const chVal = ($("channel").value || "").trim();
-      const streamerName = chVal && chVal !== "YOUR_CHANNEL" ? `@${chVal.replace(/^[@#]/, "")}` : "@streamer";
-
-      pipeline = new CanvasPipeline({
-        video: source,
-        canvas,
-        streamer: streamerName,
-        clipper: $("clipper").value || "@viewer",
-        hookBanner: $("hookOverlayInput") ? $("hookOverlayInput").value : "",
-        panX: $("panXSlider") ? Number($("panXSlider").value) / 100 : 0.5,
-        panY: $("panYSlider") ? Number($("panYSlider").value) / 100 : 0.5,
-        zoom: $("zoomSlider") ? Number($("zoomSlider").value) / 100 : 1.0
-      });
-      pipeline.setLayout($("layout").value);
-      pipeline.start();
-
-      recordingStream = pipeline.createStream(displayStream);
-      startButton.disabled = false;
-      stopButton.disabled = false;
-      connectButton.disabled = false;
-
-      // Auto-start rolling buffer immediately upon capture
-      startRollingBufferNow();
-
-      displayStream.getVideoTracks()[0].addEventListener("ended", stopAll);
+      if (window.chrome && chrome.desktopCapture && typeof chrome.desktopCapture.chooseDesktopMedia === "function") {
+        chrome.desktopCapture.chooseDesktopMedia(["tab", "window", "screen"], async (streamId) => {
+          if (!streamId) {
+            setStatus("Tab / screen selection was cancelled.");
+            return;
+          }
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                mandatory: {
+                  chromeMediaSource: "desktop",
+                  chromeMediaSourceId: streamId
+                }
+              },
+              video: {
+                mandatory: {
+                  chromeMediaSource: "desktop",
+                  chromeMediaSourceId: streamId,
+                  maxWidth: 1920,
+                  maxHeight: 1080
+                }
+              }
+            });
+            await attachAndStartStream(stream);
+          } catch (e) {
+            setStatus(`Capture stream error: ${e.message}`);
+          }
+        });
+      } else {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: { ideal: 30, max: 30 } },
+          audio: true
+        });
+        await attachAndStartStream(stream);
+      }
     } catch (err) {
       setStatus(`Capture was not started: ${err.message}`);
     }
