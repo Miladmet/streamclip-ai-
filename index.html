@@ -235,6 +235,21 @@
       </div>
 
       <div class="status" id="chatStatus" style="margin-bottom: 8px; border-left: 3px solid #9147ff; font-size: 13px;">💬 Twitch Chat: Ready — Click "Connect anonymous chat" or "Simulate Chat Hype Spike"</div>
+      
+      <!-- DRM / Black Screen Explainer Card -->
+      <div id="drmWarningBanner" style="display:none; background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; border-radius:10px; padding:12px 14px; margin-bottom:12px; font-size:12px; color:#fecaca; line-height:1.5;">
+        <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#f87171; margin-bottom:6px; font-size:13px;">
+          <span style="font-size:16px;">⚠️</span> <span>Black Screen / DRM Copy Protection Detected</span>
+        </div>
+        <p style="margin-bottom:8px;">
+          The video you selected (e.g. <strong>VEVO music video, Netflix, Hulu, Disney+</strong>) uses hardware copy protection (DRM). Chrome automatically blacks out these videos to protect copyright, which can freeze your GPU.
+        </p>
+        <div style="background:rgba(0,0,0,0.4); border-radius:6px; padding:10px; border-left:3px solid #10b981;">
+          <div style="margin-bottom:6px;">🎮 <strong>Recommended:</strong> Test on live <a href="https://www.twitch.tv/riotgames" target="_blank" style="color:#00f5ff; font-weight:700; text-decoration:underline;">Twitch streams</a> or standard YouTube gaming videos (no DRM).</div>
+          <div>💡 <strong>How to bypass:</strong> In Chrome Settings &rarr; <em>System</em> &rarr; toggle <strong>OFF</strong> <em>"Use graphics acceleration when available"</em> and restart Chrome.</div>
+        </div>
+      </div>
+
       <div class="status" id="status">Select a screen or browser tab to begin.</div>
 
       <!-- OpenAI Codex Viral Packaging Box -->
@@ -298,6 +313,8 @@
       this.fps = fps;
       this.raf = null;
       this.running = false;
+      this.drmChecked = false;
+      this.isDrmBlack = false;
       canvas.width = 720;
       canvas.height = 1280;
     }
@@ -307,9 +324,42 @@
       this.layout = layout;
     }
 
+    checkDrmProtected() {
+      this.drmChecked = true;
+      try {
+        const v = this.video;
+        const sampleCanvas = document.createElement("canvas");
+        sampleCanvas.width = 10;
+        sampleCanvas.height = 10;
+        const sCtx = sampleCanvas.getContext("2d");
+        sCtx.drawImage(v, 0, 0, 10, 10);
+        const imgData = sCtx.getImageData(0, 0, 10, 10).data;
+        let isAllBlack = true;
+        for (let i = 0; i < imgData.length; i += 4) {
+          if (imgData[i] > 14 || imgData[i + 1] > 14 || imgData[i + 2] > 14) {
+            isAllBlack = false;
+            break;
+          }
+        }
+        if (isAllBlack && !v.paused) {
+          this.isDrmBlack = true;
+          const banner = $("drmWarningBanner");
+          if (banner) banner.style.display = "block";
+          setStatus("⚠️ Black Screen: Video is protected by DRM (e.g. VEVO / Netflix). Please test on Twitch streams or YouTube gaming clips!");
+        }
+      } catch (e) {
+        console.warn("DRM sample error:", e);
+      }
+    }
+
     renderFrame() {
       const v = this.video;
       if (!v || v.readyState < 2 || !v.videoWidth || !v.videoHeight) return;
+
+      if (!this.drmChecked && v.currentTime > 2.0) {
+        this.checkDrmProtected();
+      }
+
       const c = this.ctx, W = 720, H = 1280;
       const z = Math.max(1.0, this.zoom || 1.0);
       const px = Math.max(0, Math.min(1, this.panX ?? 0.5));
@@ -408,6 +458,29 @@
       c.shadowColor = "#000";
       c.shadowBlur = 6;
       c.fillText(`⚡ Clipped by ${this.clipper}`, 28, H - 32);
+
+      // On-Canvas DRM / Black Screen Warning Box
+      if (this.isDrmBlack) {
+        c.fillStyle = "rgba(185, 28, 28, 0.92)";
+        c.beginPath();
+        if (c.roundRect) c.roundRect(40, H / 2 - 95, W - 80, 190, 16);
+        else c.rect(40, H / 2 - 95, W - 80, 190);
+        c.fill();
+        c.strokeStyle = "#ffffff";
+        c.lineWidth = 2.5;
+        c.stroke();
+
+        c.fillStyle = "#ffffff";
+        c.font = "bold 21px sans-serif";
+        c.textAlign = "center";
+        c.fillText("⚠️ DRM COPY PROTECTED", W / 2, H / 2 - 45);
+        c.font = "14px sans-serif";
+        c.fillText("VEVO / Netflix Content Blocked by Chrome", W / 2, H / 2 - 12);
+        c.font = "bold 15px sans-serif";
+        c.fillStyle = "#00f5ff";
+        c.fillText("👉 Test on Twitch or YouTube Gaming!", W / 2, H / 2 + 35);
+        c.textAlign = "left";
+      }
       c.restore();
     }
 
