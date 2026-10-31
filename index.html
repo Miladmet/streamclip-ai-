@@ -234,6 +234,19 @@
         </div>
       </div>
 
+      <!-- Audio Peak Reaction Detector Meter -->
+      <div class="hype-box" style="margin-top: -6px; border-color: rgba(0, 245, 255, 0.35);">
+        <div class="hype-header">
+          <span>🎙️ <strong>Audio Reaction Peak Detector</strong> <span id="audioScoreText" style="color:#00f5ff;">(0 dB / Idle)</span></span>
+          <label style="margin:0; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+            <input type="checkbox" id="autoAudioClipToggle" checked style="padding:0;" /> Auto-clip on Shouts (>85dB)
+          </label>
+        </div>
+        <div class="hype-bar-bg">
+          <div class="hype-bar-fill" id="audioBarFill" style="background: linear-gradient(90deg, #10b981 0%, #00f5ff 60%, #ff4655 100%);"></div>
+        </div>
+      </div>
+
       <div class="status" id="chatStatus" style="margin-bottom: 8px; border-left: 3px solid #9147ff; font-size: 13px;">💬 Twitch Chat: Ready — Click "Connect anonymous chat" or "Simulate Chat Hype Spike"</div>
       
       <!-- DRM / Black Screen Explainer Card -->
@@ -732,6 +745,92 @@
     }
   }
 
+  class AudioReactionDetector {
+    constructor({ onPeak = () => {}, thresholdDb = 85, cooldownMs = 8000 } = {}) {
+      this.onPeak = onPeak;
+      this.thresholdDb = thresholdDb;
+      this.cooldownMs = cooldownMs;
+      this.audioCtx = null;
+      this.analyser = null;
+      this.sourceNode = null;
+      this.rafId = null;
+      this.lastPeakAt = 0;
+      this.active = false;
+      this.currentDb = 0;
+    }
+
+    start(stream) {
+      if (!stream || stream.getAudioTracks().length === 0) return;
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        this.audioCtx = new AudioContextClass();
+        this.analyser = this.audioCtx.createAnalyser();
+        this.analyser.fftSize = 256;
+        this.sourceNode = this.audioCtx.createMediaStreamSource(stream);
+        this.sourceNode.connect(this.analyser);
+        this.active = true;
+        this._loop();
+      } catch (e) {
+        console.warn("AudioReactionDetector start error:", e);
+      }
+    }
+
+    _loop() {
+      if (!this.active || !this.analyser) return;
+      const data = new Uint8Array(this.analyser.frequencyBinCount);
+      this.analyser.getByteFrequencyData(data);
+
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        sum += data[i];
+      }
+      const avg = sum / data.length; // 0 to 255
+      // Convert to normalized approximate decibels (0 to 100 dB)
+      const db = Math.min(100, Math.round((avg / 255) * 105));
+      this.currentDb = db;
+
+      const fill = $("audioBarFill");
+      const label = $("audioScoreText");
+      if (fill) fill.style.width = `${Math.min(100, db)}%`;
+      if (label) {
+        if (db >= this.thresholdDb) {
+          label.innerHTML = `<strong style="color:#ff4655;">🚨 SHOUT / REACTION PEAK (${db} dB)!</strong>`;
+        } else if (db >= 50) {
+          label.innerHTML = `<span style="color:#f59e0b;">🗣️ Talking / Game Action (${db} dB)</span>`;
+        } else {
+          label.innerHTML = `<span style="color:#00f5ff;">(${db} dB / Normal)</span>`;
+        }
+      }
+
+      if (db >= this.thresholdDb) {
+        const now = Date.now();
+        if (now - this.lastPeakAt >= this.cooldownMs) {
+          this.lastPeakAt = now;
+          this.onPeak(db);
+        }
+      }
+
+      this.rafId = requestAnimationFrame(() => this._loop());
+    }
+
+    stop() {
+      this.active = false;
+      if (this.rafId) cancelAnimationFrame(this.rafId);
+      if (this.sourceNode) try { this.sourceNode.disconnect(); } catch {}
+      if (this.analyser) try { this.analyser.disconnect(); } catch {}
+      if (this.audioCtx && this.audioCtx.state !== "closed") {
+        try { this.audioCtx.close(); } catch {}
+      }
+      this.audioCtx = null;
+      this.analyser = null;
+      this.sourceNode = null;
+      const fill = $("audioBarFill");
+      const label = $("audioScoreText");
+      if (fill) fill.style.width = "0%";
+      if (label) label.textContent = "(0 dB / Idle)";
+    }
+  }
+
   // UI Wiring
   const $ = id => document.getElementById(id);
   const source = $("source");
@@ -754,6 +853,7 @@
   let sessionVault = [];
   let recentHypeEvents = [];
   let lastHypeClipAt = 0;
+  let audioDetector = null;
 
   const ON_SCREEN_HOOKS = [
     "WAIT FOR THIS CLUTCH 😱🔥",
@@ -1002,6 +1102,25 @@
     stopButton.disabled = false;
     connectButton.disabled = false;
 
+    // Start Audio Reaction Peak Detector if audio track is present
+    if (audioDetector) audioDetector.stop();
+    audioDetector = new AudioReactionDetector({
+      thresholdDb: 85,
+      cooldownMs: 8000,
+      onPeak: (db) => {
+        const autoAudioToggle = $("autoAudioClipToggle");
+        if (autoAudioToggle && !autoAudioToggle.checked) return;
+        if (busy) return;
+        const clipperName = `@AudioReaction_${db}dB 🔥`;
+        $("clipper").value = clipperName;
+        renderCodexHooks(clipperName);
+        if (pipeline) pipeline.clipper = clipperName;
+        setStatus(`🚨 LOUD REACTION DETECTED (${db} dB)! Auto-clipping last 30s (${clipperName})…`);
+        exportAt(performance.now(), clipperName);
+      }
+    });
+    audioDetector.start(displayStream);
+
     // Auto-start rolling buffer immediately upon capture
     startRollingBufferNow();
 
@@ -1205,6 +1324,8 @@
 
   function stopAll() {
     clearInterval(pollTimer);
+    if (audioDetector) audioDetector.stop();
+    audioDetector = null;
     if (buffer) buffer.stop();
     if (pipeline) pipeline.stop();
     if (displayStream) displayStream.getTracks().forEach(t => t.stop());
