@@ -919,6 +919,17 @@
 
     const autoToggle = $("autoHypeClipToggle");
     if (score >= 100 && autoToggle && autoToggle.checked && (now - lastHypeClipAt > 8000)) {
+      // Defensive guard: with no running rolling buffer there is nothing to clip.
+      // Warn instead of announcing a clip, and leave the attribution and cooldown untouched
+      // so a real auto-clip can fire as soon as capture starts.
+      if (!buffer || !buffer.running) {
+        const chatStatusBox = $("chatStatus");
+        if (chatStatusBox) {
+          chatStatusBox.style.borderLeftColor = "#f59e0b";
+          chatStatusBox.textContent = "⚠️ Hype spike detected — capture a screen tab first to enable auto-clip";
+        }
+        return;
+      }
       lastHypeClipAt = now;
       const hypeClipper = `@${username}_HypeSpike🔥`;
       $("clipper").value = hypeClipper;
