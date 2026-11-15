@@ -200,19 +200,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function renderVault(vault) {
+    vaultList.innerHTML = '';
     if (!vault.length) {
-      vaultList.innerHTML = '<div style="font-size:11px; color:var(--muted); text-align:center; padding:6px;">No clips captured yet.</div>';
+      const emptyDiv = document.createElement('div');
+      emptyDiv.style.cssText = 'font-size:11px; color:var(--muted); text-align:center; padding:6px;';
+      emptyDiv.textContent = 'No clips captured yet.';
+      vaultList.appendChild(emptyDiv);
       return;
     }
 
-    vaultList.innerHTML = vault.map(clip => `
-      <div class="vault-item">
-        <div>
-          <strong>${clip.channel}</strong> (${clip.timestamp})
-          <span style="color:var(--muted); font-size:10px;">${clip.size}</span>
-        </div>
-        <a href="${clip.blobUrl}" download="StreamClip_${clip.channel}_${clip.id}.webm">Download</a>
-      </div>
-    `).join('');
+    vault.forEach(clip => {
+      const item = document.createElement('div');
+      item.className = 'vault-item';
+
+      const infoDiv = document.createElement('div');
+      const strong = document.createElement('strong');
+      strong.textContent = clip.channel || 'streamer';
+      infoDiv.appendChild(strong);
+
+      const timeSpan = document.createElement('span');
+      timeSpan.textContent = ` (${clip.timestamp || ''}) `;
+      infoDiv.appendChild(timeSpan);
+
+      const sizeSpan = document.createElement('span');
+      sizeSpan.style.cssText = 'color:var(--muted); font-size:10px;';
+      sizeSpan.textContent = clip.size || '';
+      infoDiv.appendChild(sizeSpan);
+
+      const link = document.createElement('a');
+      link.href = clip.blobUrl || '#';
+      link.download = `StreamClip_${(clip.channel || 'clip').replace(/[^a-zA-Z0-9_-]/g, '_')}_${clip.id || Date.now()}.webm`;
+      link.textContent = 'Download';
+
+      item.appendChild(infoDiv);
+      item.appendChild(link);
+      vaultList.appendChild(item);
+    });
   }
 });
