@@ -70,16 +70,37 @@ class RollingClipBuffer {
     const durA = this.slotA.startTime ? (now - this.slotA.startTime) : 0;
     const durB = this.slotB.startTime ? (now - this.slotB.startTime) : 0;
 
+    // Pick the slot that has accumulated the closest coverage to 30 seconds
     let bestSlot = this.slotA;
-    if (durB > durA) {
+    let actualDur = durA;
+    if (durB >= 15000 && durB > durA) {
       bestSlot = this.slotB;
+      actualDur = durB;
+    } else if (durA < 15000 && durB > durA) {
+      bestSlot = this.slotB;
+      actualDur = durB;
     }
 
     if (!bestSlot.chunks || bestSlot.chunks.length === 0) {
       return null;
     }
 
-    return new Blob(bestSlot.chunks, { type: 'video/webm' });
+    // Retain only chunks up to the target 30-second window (each chunk is 500ms)
+    // Always keep chunk[0] because it holds the WebM EBML header
+    let selectedChunks = bestSlot.chunks;
+    const targetChunksCount = Math.min(bestSlot.chunks.length, 60); // 60 * 500ms = 30s
+    if (bestSlot.chunks.length > 64) {
+      // Keep chunk[0] (header) and the most recent 59 chunks
+      selectedChunks = [bestSlot.chunks[0], ...bestSlot.chunks.slice(-59)];
+    }
+
+    const blob = new Blob(selectedChunks, { type: 'video/webm' });
+    const formattedDuration = `${Math.min(30, Math.round(actualDur / 1000))}s`;
+
+    return {
+      blob,
+      duration: formattedDuration
+    };
   }
 }
 
@@ -399,11 +420,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.channel) pipeline.channel = request.channel;
     if (request.clipper) pipeline.clipper = request.clipper;
 
-    const clipBlob = pipeline.buffer.getBestClip();
-    if (!clipBlob) {
+    const clipResult = pipeline.buffer.getBestClip();
+    if (!clipResult || !clipResult.blob) {
       sendResponse({ success: false, error: 'Buffer warming up (less than 1s of video)' });
       return;
     }
+    const clipBlob = clipResult.blob;
 
     pipeline.captureCoverThumbnail().then((thumbUrl) => {
       const reader = new FileReader();
@@ -412,7 +434,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           success: true,
           dataUrl: reader.result,
           thumbUrl: thumbUrl,
-          duration: '30s',
+          duration: clipResult.duration || '30s',
           size: (clipBlob.size / (1024 * 1024)).toFixed(1) + ' MB'
         });
       };

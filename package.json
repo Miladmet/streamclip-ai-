@@ -1,19 +1,20 @@
 {
   "name": "streamclip-ai",
-  "version": "0.1.0",
+  "version": "1.2.2",
   "private": true,
-  "type": "module",
+  "description": "Zero-cost client-side 9:16 vertical short clipper for YouTube & Twitch streams",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "start": "npx serve .",
+    "package:extension": "python scripts/package_extension.py"
   },
-  "dependencies": {
-    "@ffmpeg/core": "0.12.10",
-    "@ffmpeg/ffmpeg": "0.12.15",
-    "@ffmpeg/util": "0.12.2"
-  },
-  "devDependencies": {
-    "vite": "^6.4.5"
-  }
+  "keywords": [
+    "twitch",
+    "clipper",
+    "webm",
+    "shorts",
+    "tiktok",
+    "chrome-extension"
+  ],
+  "author": "Milmann Admettre",
+  "license": "MIT"
 }
