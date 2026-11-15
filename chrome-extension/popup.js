@@ -227,13 +227,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       sizeSpan.textContent = clip.size || '';
       infoDiv.appendChild(sizeSpan);
 
-      const link = document.createElement('a');
-      link.href = clip.blobUrl || '#';
-      link.download = `StreamClip_${(clip.channel || 'clip').replace(/[^a-zA-Z0-9_-]/g, '_')}_${clip.id || Date.now()}.webm`;
-      link.textContent = 'Download';
-
+      const statusBadge = document.createElement('span');
+      statusBadge.style.cssText = 'color:#10b981; font-size:10px; font-weight:600; margin-left:6px;';
+      statusBadge.textContent = 'Saved to Downloads';
       item.appendChild(infoDiv);
-      item.appendChild(link);
+      item.appendChild(statusBadge);
       vaultList.appendChild(item);
     });
   }

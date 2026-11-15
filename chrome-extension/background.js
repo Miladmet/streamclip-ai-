@@ -1,15 +1,11 @@
 // StreamClip AI - Background Service Worker (Manifest V3)
 
-let offscreenCreated = false;
-
 async function ensureOffscreenDocument() {
-  if (offscreenCreated) return;
   const existingContexts = await chrome.runtime.getContexts({
     contextTypes: ['OFFSCREEN_DOCUMENT']
   });
 
   if (existingContexts.length > 0) {
-    offscreenCreated = true;
     return;
   }
 
@@ -18,7 +14,6 @@ async function ensureOffscreenDocument() {
     reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK', 'BLOBS'],
     justification: 'Continuously render 9:16 vertical canvas buffer and encode rolling 30s WebM clips.'
   });
-  offscreenCreated = true;
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -30,8 +25,14 @@ chrome.runtime.onInstalled.addListener(() => {
     panY: 50,
     zoom: 1.0,
     autoDownload: true,
+    isStreamConnected: false,
     vault: []
   });
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  // Reset transient connection state on browser restart
+  chrome.storage.local.set({ isStreamConnected: false });
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -49,6 +50,12 @@ async function handleMessage(request, sender, sendResponse) {
       return;
     }
 
+    if (request.action === 'DISCONNECT_STREAM') {
+      await chrome.storage.local.set({ isStreamConnected: false });
+      sendResponse({ success: true });
+      return;
+    }
+
     if (request.action === 'CAPTURE_CLIP') {
       const channel = request.channel || 'streamer';
       const clipper = request.clipper || 'Viewer';
@@ -59,27 +66,18 @@ async function handleMessage(request, sender, sendResponse) {
         channel,
         clipper
       }, async (response) => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+
         if (response && response.success) {
-          // Store in vault
           const { vault = [], autoDownload = true } = await chrome.storage.local.get(['vault', 'autoDownload']);
-          const clipItem = {
-            id: 'clip_' + Date.now(),
-            channel,
-            clipper,
-            timestamp: new Date().toLocaleTimeString(),
-            blobUrl: response.dataUrl,
-            thumbUrl: response.thumbUrl,
-            duration: response.duration || '30s',
-            size: response.size || '10MB'
-          };
+          const cleanChannel = channel.replace(/[^a-zA-Z0-9_-]/g, '_');
+          const filename = `StreamClip_${cleanChannel}_${Date.now()}.webm`;
 
-          vault.unshift(clipItem);
-          if (vault.length > 20) vault.pop();
-          await chrome.storage.local.set({ vault });
-
-          // Auto-download clip via chrome.downloads API
-          if (autoDownload && response.dataUrl) {
-            const filename = `StreamClip_${channel}_${Date.now()}.webm`;
+          // Download immediately using blob URL or data URL
+          if (response.dataUrl) {
             chrome.downloads.download({
               url: response.dataUrl,
               filename: filename,
@@ -87,7 +85,23 @@ async function handleMessage(request, sender, sendResponse) {
             });
           }
 
-          sendResponse({ success: true, clip: clipItem });
+          // Store only metadata in chrome.storage.local to avoid hitting 10MB quota
+          const clipMetadata = {
+            id: 'clip_' + Date.now(),
+            channel,
+            clipper,
+            filename: filename,
+            timestamp: new Date().toLocaleTimeString(),
+            duration: response.duration || '30s',
+            size: response.size || '7.5 MB',
+            thumbUrl: response.thumbUrl || ''
+          };
+
+          vault.unshift(clipMetadata);
+          if (vault.length > 20) vault.pop();
+          await chrome.storage.local.set({ vault });
+
+          sendResponse({ success: true, clip: clipMetadata });
         } else {
           sendResponse({ success: false, error: response?.error || 'Failed to capture clip from buffer' });
         }
@@ -96,7 +110,7 @@ async function handleMessage(request, sender, sendResponse) {
     }
 
     if (request.action === 'GET_STATUS') {
-      const state = await chrome.storage.local.get(['activeChannel', 'currentLayout', 'vault', 'panX', 'panY', 'zoom']);
+      const state = await chrome.storage.local.get(['activeChannel', 'currentLayout', 'vault', 'panX', 'panY', 'zoom', 'isStreamConnected']);
       sendResponse({ success: true, state });
       return;
     }
