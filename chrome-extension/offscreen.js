@@ -85,17 +85,10 @@ class RollingClipBuffer {
       return null;
     }
 
-    // Retain only chunks up to the target 30-second window (each chunk is 500ms)
-    // Always keep chunk[0] because it holds the WebM EBML header
-    let selectedChunks = bestSlot.chunks;
-    const targetChunksCount = Math.min(bestSlot.chunks.length, 60); // 60 * 500ms = 30s
-    if (bestSlot.chunks.length > 64) {
-      // Keep chunk[0] (header) and the most recent 59 chunks
-      selectedChunks = [bestSlot.chunks[0], ...bestSlot.chunks.slice(-59)];
-    }
-
-    const blob = new Blob(selectedChunks, { type: 'video/webm' });
-    const formattedDuration = `${Math.min(30, Math.round(actualDur / 1000))}s`;
+    // Keep all sequential chunks from the continuous recorder stream intact.
+    // Never drop middle chunks, as that produces invalid WebM cluster timestamps.
+    const blob = new Blob(bestSlot.chunks, { type: 'video/webm' });
+    const formattedDuration = `${Math.min(32, Math.max(1, Math.round(actualDur / 1000)))}s`;
 
     return {
       blob,

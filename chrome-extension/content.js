@@ -198,12 +198,21 @@
             const rawText = (node.textContent || '').trim();
             if (!rawText) continue;
 
-            // Check for explicit !clip command at word boundary
-            if (/\b!clip\b/i.test(rawText)) {
-              const authorEl =
-                node.querySelector('[data-a-target="chat-message-username"]') || // Twitch
-                node.querySelector('#author-name');                              // YouTube
-              const author = authorEl ? authorEl.textContent.trim() : 'ChatViewer';
+            // Extract author and message body separately
+            const authorEl =
+              node.querySelector('[data-a-target="chat-message-username"]') || // Twitch
+              node.querySelector('#author-name');                              // YouTube
+            const author = authorEl ? authorEl.textContent.trim() : 'ChatViewer';
+
+            // Extract message body text (excluding username element)
+            const bodyEl =
+              node.querySelector('[data-a-target="chat-line-message-body"]') || // Twitch
+              node.querySelector('#message') ||                                  // YouTube
+              node;
+            const messageText = (bodyEl.textContent || '').trim();
+
+            // Check for explicit !clip command at word boundary in message text
+            if (/(^|\s)!clip\b/i.test(messageText)) {
               triggerClip(author);
             }
 

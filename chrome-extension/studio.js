@@ -702,16 +702,37 @@
         sessionVault.slice(0, 6).forEach(item => {
           const div = document.createElement("div");
           div.className = "vault-item";
-          div.innerHTML = `
-            <div>
-              <strong>Clip #${item.id}</strong> • <span style="color:#10b981;">${item.clipper}</span>
-              <div class="small">${item.durSec}s • ${item.sizeMb} MB • ${item.timeLabel}</div>
-            </div>
-            <div style="display:flex; gap:6px;">
-              <a href="${item.videoURL}" download="${item.fileName}" style="background:#9147ff; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:600;">WebM</a>
-              ${item.thumbDataUrl ? `<a href="${item.thumbDataUrl}" download="cover-${item.id}.jpg" style="background:#262632; border:1px solid #494957; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px;">Cover</a>` : ""}
-            </div>
-          `;
+          const infoDiv = document.createElement("div");
+          const strong = document.createElement("strong");
+          strong.textContent = `Clip #${item.id}`;
+          infoDiv.appendChild(strong);
+          infoDiv.appendChild(document.createTextNode(" • "));
+          const clipperSpan = document.createElement("span");
+          clipperSpan.style.color = "#10b981";
+          clipperSpan.textContent = item.clipper || "";
+          infoDiv.appendChild(clipperSpan);
+          const metaDiv = document.createElement("div");
+          metaDiv.className = "small";
+          metaDiv.textContent = `${item.durSec}s • ${item.sizeMb} MB • ${item.timeLabel}`;
+          infoDiv.appendChild(metaDiv);
+          const btnDiv = document.createElement("div");
+          btnDiv.style.cssText = "display:flex; gap:6px;";
+          const webmLink = document.createElement("a");
+          webmLink.href = item.videoURL;
+          webmLink.download = item.fileName;
+          webmLink.style.cssText = "background:#9147ff; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:600;";
+          webmLink.textContent = "WebM";
+          btnDiv.appendChild(webmLink);
+          if (item.thumbDataUrl) {
+            const coverLink = document.createElement("a");
+            coverLink.href = item.thumbDataUrl;
+            coverLink.download = `cover-${item.id}.jpg`;
+            coverLink.style.cssText = "background:#262632; border:1px solid #494957; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px;";
+            coverLink.textContent = "Cover";
+            btnDiv.appendChild(coverLink);
+          }
+          div.appendChild(infoDiv);
+          div.appendChild(btnDiv);
           vaultList.appendChild(div);
         });
       }
